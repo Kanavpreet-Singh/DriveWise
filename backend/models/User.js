@@ -1,4 +1,5 @@
-import { Schema, model } from "mongoose";
+const mongoose = require("mongoose");
+const { Schema, model } = mongoose;
 
 const userSchema = new Schema({
   username: {
@@ -20,16 +21,18 @@ const userSchema = new Schema({
 
   },
 
+  isVerified:{
+    type:Boolean
+  },
+
   role: {
     type: String,
     enum: ['dealer', 'customer'],
     default: 'customer'
   },
 
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
 });
 
-export const User = model("User", userSchema);
+const User = model("User", userSchema);
+
+module.exports = User;

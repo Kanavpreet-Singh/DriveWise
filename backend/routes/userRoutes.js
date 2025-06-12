@@ -3,11 +3,37 @@ const router = express.Router();
 const nodemailer = require("nodemailer");
 require('dotenv').config();
 const User = require("../models/User"); 
-
+const { z } = require('zod');
 const otpStore = new Map();
 
 router.post("/signup-request", async (req, res) => {
-  const { username, email, password } = req.body;
+
+
+  const signupRequestSchema = z.object({
+  username: z
+    .string()
+    .min(3, "Username must be at least 3 characters")
+    .max(15, "Username must be at most 15 characters"),
+    
+  email: z
+    .string()
+    .email("Invalid email format")
+    .max(100, "Email is too long"),
+
+  password: z
+    .string()
+    .min(3, "Password must be at least 3 characters")
+    .max(50, "Password must be at most 50 characters"),
+});
+
+  const validationResult = signupRequestSchema.safeParse(req.body);
+
+  if (!validationResult.success) {
+    const errors = validationResult.error.errors.map(err => err.message);
+    return res.status(400).json({ message: errors[0] }); 
+  }
+
+  const { username, email, password } = validationResult.data;
 
   try {
     

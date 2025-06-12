@@ -27,10 +27,10 @@ const Navbar = () => {
 
       
       <div className="hidden md:flex space-x-6 mr-4">
-        <a href='#' className='hover:text-yellow hover:font-bold'>Home</a>
+        <a href='/' className='hover:text-yellow hover:font-bold'>Home</a>
         <a href='#' className='hover:text-yellow hover:font-bold'>About Us</a>
         <a href='#' className='hover:text-yellow hover:font-bold'>Contact</a>
-        <a href='#' className='hover:text-yellow hover:font-bold'>Login</a>
+        <a href='/signup' className='hover:text-yellow hover:font-bold'>Signup</a>
       </div>
 
       

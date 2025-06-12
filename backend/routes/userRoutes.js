@@ -39,7 +39,8 @@ router.post("/signup-request", async (req, res) => {
       html: `<p>Your OTP is <b>${otp}</b>. It is valid for 5 minutes.</p>`,
     };
 
-    await transporter.sendMail(mailOptions);
+  //  await transporter.sendMail(mailOptions);
+  console.log(otp);
 
     res.status(200).json({ message: "OTP sent to email." });
   } catch (err) {
@@ -66,6 +67,8 @@ router.post("/signup-verify", async (req, res) => {
   if (otp !== storedOtp) {
     return res.status(400).json({ message: "Invalid OTP" });
   }
+  console.log('you entered'+otp);
+  console.log('stored otp is'+storedOtp);
 
   try {
     // Save user to DB only after OTP is valid

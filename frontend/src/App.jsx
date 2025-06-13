@@ -9,6 +9,7 @@ import DealerProfile from "./pages/DealerProfile";
 import CustomerProfile from "./pages/CustomerProfile";
 import Catalogue from "./pages/Catalogue";
 import AddCar from "./pages/AddCar";
+import CarDetails from "./pages/CarDetails";
 function App() {
   
 
@@ -20,6 +21,7 @@ function App() {
       <Route path="/signin" element={<Signin/>} />
       <Route path="/catalogue" element={<Catalogue/>} />
       <Route path="/addcar" element={<AddCar/>} />
+      <Route path="/catalogue/:carId" element={<CarDetails />} />
       <Route path="/dealer" element={<DealerProfile/>} />
       <Route path="/customer" element={<CustomerProfile/>} />
       </Routes>

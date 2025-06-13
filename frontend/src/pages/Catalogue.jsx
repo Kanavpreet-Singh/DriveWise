@@ -46,6 +46,7 @@ const Catalogue = () => {
             minprice={car.minprice}
             maxprice={car.maxprice}
             image={car.image}
+            _id={car._id}
           />
         ))}
       </div>

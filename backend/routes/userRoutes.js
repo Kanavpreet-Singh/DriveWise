@@ -2,29 +2,30 @@ const express = require("express");
 const router = express.Router();
 const nodemailer = require("nodemailer");
 require('dotenv').config();
+const jwt = require("jsonwebtoken");
 const User = require("../models/User"); 
 const { z } = require('zod');
 const otpStore = new Map();
+const bcrypt=require("bcrypt");
+const rateLimitMap = new Map(); // email -> timestamp of last OTP request
 
 router.post("/signup-request", async (req, res) => {
-
-
   const signupRequestSchema = z.object({
-  username: z
-    .string()
-    .min(3, "Username must be at least 3 characters")
-    .max(15, "Username must be at most 15 characters"),
-    
-  email: z
-    .string()
-    .email("Invalid email format")
-    .max(100, "Email is too long"),
+    username: z
+      .string()
+      .min(3, "Username must be at least 3 characters")
+      .max(15, "Username must be at most 15 characters"),
 
-  password: z
-    .string()
-    .min(3, "Password must be at least 3 characters")
-    .max(50, "Password must be at most 50 characters"),
-});
+    email: z
+      .string()
+      .email("Invalid email format")
+      .max(100, "Email is too long"),
+
+    password: z
+      .string()
+      .min(3, "Password must be at least 3 characters")
+      .max(50, "Password must be at most 50 characters"),
+  });
 
   const validationResult = signupRequestSchema.safeParse(req.body);
 
@@ -35,21 +36,28 @@ router.post("/signup-request", async (req, res) => {
 
   const { username, email, password } = validationResult.data;
 
+  
+  const now = Date.now();
+  const lastRequestTime = rateLimitMap.get(email);
+  const COOLDOWN = 2 * 60 * 1000; 
+
+  if (lastRequestTime && now - lastRequestTime < COOLDOWN) {
+    const waitTime = Math.ceil((COOLDOWN - (now - lastRequestTime)) / 1000);
+    return res.status(429).json({ message: `Please wait ${waitTime} seconds before requesting another OTP.` });
+  }
+
   try {
-    
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpiry = Date.now() + 5 * 60 * 1000; // 5 mins
 
-    
     otpStore.set(email, { otp, otpExpiry, username, password });
+    rateLimitMap.set(email, now); // ✅ Update rate limit timestamp
 
-    
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
@@ -65,8 +73,8 @@ router.post("/signup-request", async (req, res) => {
       html: `<p>Your OTP is <b>${otp}</b>. It is valid for 5 minutes.</p>`,
     };
 
-  //  await transporter.sendMail(mailOptions);
-  console.log(otp);
+    // await transporter.sendMail(mailOptions);
+    console.log(otp);
 
     res.status(200).json({ message: "OTP sent to email." });
   } catch (err) {
@@ -96,12 +104,14 @@ router.post("/signup-verify", async (req, res) => {
   console.log('you entered'+otp);
   console.log('stored otp is'+storedOtp);
 
+  const hashedPassword=await bcrypt.hash(password,5);
+
   try {
     // Save user to DB only after OTP is valid
     const newUser = new User({
       username,
       email,
-      password,
+      password:hashedPassword,
       isVerified: true,
     });
 
@@ -115,6 +125,64 @@ router.post("/signup-verify", async (req, res) => {
     console.error(err);
     res.status(500).json({ message: "Error saving user" });
   }
+});
+
+router.post('/signin',async(req,res)=>{
+
+  const signinSchema = z.object({
+  email: z
+    .string()
+    .email("Invalid email format")
+    .max(100, "Email too long"),
+
+  password: z
+    .string()
+    .min(3, "Password must be atleast 3 characters")
+    .max(50, "Password too long"),
+});
+
+  const result = signinSchema.safeParse(req.body);
+
+  if (!result.success) {
+    const errorMessage = result.error.errors[0].message;
+    return res.status(400).json({ message: errorMessage });
+  }
+
+  const { email, password } = result.data;
+
+  try {
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(400).json({ message: "Wrong email" });
+    }
+
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (!passwordMatch) {
+      return res.status(400).json({ message: "Wrong password" });
+    }
+
+    const token = jwt.sign(
+      { userId: user._id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    return res.status(200).json({
+      message: "You are logged in",
+      token, 
+      user: {
+        id: user._id,
+        email: user.email,
+        username: user.username,
+      }
+    });
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+
 });
 
 

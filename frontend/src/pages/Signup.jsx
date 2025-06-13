@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const backend_url = "http://localhost:5000";
+const backend_url = import.meta.env.VITE_BACKEND_URL;
 
 
 
@@ -66,7 +66,7 @@ const Signup = () => {
       toast.success(response.data.message);
 
       
-      navigate('/');
+      navigate('/signin');
     } catch (error) {
       toast.error(error.response?.data?.message || 'OTP verification failed');
     } finally {
@@ -143,6 +143,9 @@ const Signup = () => {
                 autoFocus
               />
               <p className="text-sm text-[#14213D]">We've sent an OTP to {formData.email}</p>
+              <p className="text-xs text-gray-500 italic">
+                If you didn't request this, you can safely ignore the message.
+              </p>
             </div>
 
             <button
@@ -157,7 +160,7 @@ const Signup = () => {
         
         <p className="text-[#14213D] text-sm text-center mt-6">
           Already have an account?{' '}
-          <a href="/login" className="text-[#FCA311] font-semibold hover:underline">
+          <a href="/signin" className="text-[#FCA311] font-semibold hover:underline">
             Log in
           </a>
         </p>

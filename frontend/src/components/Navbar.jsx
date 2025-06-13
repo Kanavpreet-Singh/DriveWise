@@ -1,7 +1,18 @@
-import React, { useState } from 'react';
-
+import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
+import { useAuth } from '../context/AuthContext';
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const { isLoggedIn, logout } = useAuth();
+
+  
+
+  
+
+  const handleLogout = () => {
+    logout();
+    toast.success("You are logged out");
+  };
 
   const hamburger = (
     <svg
@@ -25,12 +36,20 @@ const Navbar = () => {
       
       <div className="text-xl font-bold ml-4">MySite</div>
 
-      
+      {/* Desktop menu */}
       <div className="hidden md:flex space-x-6 mr-4">
         <a href='/' className='hover:text-yellow hover:font-bold'>Home</a>
         <a href='#' className='hover:text-yellow hover:font-bold'>About Us</a>
         <a href='#' className='hover:text-yellow hover:font-bold'>Contact</a>
-        <a href='/signup' className='hover:text-yellow hover:font-bold'>Signup</a>
+        {isLoggedIn ? (
+          <button onClick={handleLogout} className="hover:text-yellow hover:font-bold">
+            Logout
+          </button>
+        ) : (
+          <a href="/signup" className="hover:text-yellow hover:font-bold">
+            Signup
+          </a>
+        )}
       </div>
 
       
@@ -44,7 +63,15 @@ const Navbar = () => {
           <a href='#'>Home</a>
           <a href='#'>About Us</a>
           <a href='#'>Contact</a>
-          <a href='#'>Login</a>
+                  {isLoggedIn ? (
+          <button onClick={handleLogout} className="hover:text-yellow hover:font-bold">
+            Logout
+          </button>
+        ) : (
+          <a href="/signup" className="hover:text-yellow hover:font-bold">
+            Signup
+          </a>
+        )}
         </div>
       )}
     </nav>

@@ -7,6 +7,8 @@ const User = require("../models/User");
 const { z } = require('zod');
 const otpStore = new Map();
 const bcrypt=require("bcrypt");
+const userAuth = require("../middleware/authentication/user");
+const { Car } = require("../models/Car");
 const rateLimitMap = new Map(); // email -> timestamp of last OTP request
 
 router.post("/signup-request", async (req, res) => {
@@ -106,6 +108,8 @@ router.post("/signup-verify", async (req, res) => {
 
   const hashedPassword=await bcrypt.hash(password,5);
 
+  const isInstituteEmail = email.endsWith("@pec.edu.in");
+
   try {
     // Save user to DB only after OTP is valid
     const newUser = new User({
@@ -113,6 +117,7 @@ router.post("/signup-verify", async (req, res) => {
       email,
       password:hashedPassword,
       isVerified: true,
+      role: isInstituteEmail ? "dealer" : "customer",
     });
 
     await newUser.save();
@@ -163,7 +168,7 @@ router.post('/signin',async(req,res)=>{
     }
 
     const token = jwt.sign(
-      { userId: user._id, email: user.email },
+      { userId: user._id, email: user.email,username:user.username,role:user.role },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
@@ -182,6 +187,24 @@ router.post('/signin',async(req,res)=>{
     console.error(err);
     return res.status(500).json({ message: "Internal server error" });
   }
+
+});
+
+router.get('/dealer',userAuth,async(req,res)=>{
+
+  const {userId}=req.user;
+
+  let dealer=await User.findById(userId);
+
+  if(!dealer) {
+
+    return res.status(400).json({message:'dealer not found'})
+
+  }
+
+  let cars=await Car.find({listedby:userId});
+
+  return res.status(200).json({message:'dealer found',dealer:dealer,cars:cars});
 
 });
 

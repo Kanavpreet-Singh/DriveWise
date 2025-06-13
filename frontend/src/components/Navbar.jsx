@@ -39,7 +39,7 @@ const Navbar = () => {
       {/* Desktop menu */}
       <div className="hidden md:flex space-x-6 mr-4">
         <a href='/' className='hover:text-yellow hover:font-bold'>Home</a>
-        <a href='#' className='hover:text-yellow hover:font-bold'>About Us</a>
+        <a href='/catalogue' className='hover:text-yellow hover:font-bold'>Catalogue</a>
         <a href='#' className='hover:text-yellow hover:font-bold'>Contact</a>
         {isLoggedIn ? (
           <button onClick={handleLogout} className="hover:text-yellow hover:font-bold">
@@ -60,8 +60,8 @@ const Navbar = () => {
       
       {isOpen && (
         <div className="absolute top-16 right-4 bg-white border border-gray shadow-md flex flex-col space-y-4 p-4 md:hidden z-10">
-          <a href='#'>Home</a>
-          <a href='#'>About Us</a>
+          <a href='/'>Home</a>
+          <a href='/catalogue'>Catalogue</a>
           <a href='#'>Contact</a>
                   {isLoggedIn ? (
           <button onClick={handleLogout} className="hover:text-yellow hover:font-bold">

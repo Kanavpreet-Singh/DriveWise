@@ -12,6 +12,7 @@ import AddCar from "./pages/AddCar";
 import CarDetails from "./pages/CarDetails";
 import Home from "./pages/Home";
 import Footer from "./components/Footer";
+import EditCar from "./pages/EditCar";
 function App() {
   
 
@@ -26,6 +27,7 @@ function App() {
       <Route path="/catalogue" element={<Catalogue/>} />
       <Route path="/addcar" element={<AddCar/>} />
       <Route path="/catalogue/:carId" element={<CarDetails />} />
+      <Route path="/edit/:id" element={<EditCar />} />
       <Route path="/dealer" element={<DealerProfile/>} />
       <Route path="/customer" element={<CustomerProfile/>} />
       </Routes>

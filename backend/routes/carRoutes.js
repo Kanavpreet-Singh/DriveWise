@@ -1,6 +1,7 @@
 const express = require("express");
 const  Car  = require("../models/Car");
 const userAuth = require("../middleware/authentication/user");
+
 const router = express.Router();
 
 router.get('/allcars', async (req, res) => {
@@ -68,5 +69,54 @@ router.get('/:id', async (req, res) => {
     res.status(500).json({ message: "Error fetching car" });
   }
 });
+router.post('/:id', userAuth, async (req, res) => {
+  try {
+    const {
+      name,
+      brand,
+      minprice,
+      maxprice,
+      category,
+      fuelType,
+      transmission,
+      year,
+      seats,
+      image,
+    } = req.body;
+
+    const carId = req.params.id;
+
+    let car = await Car.findById(carId);
+    if (!car) {
+      return res.status(404).json({ message: 'Car not found' });
+    }
+
+    
+    if (car.listedby.toString() !== req.user.userId) {
+      return res.status(403).json({ message: 'Unauthorized to edit this car' });
+    }
+
+    
+    car.name = name;
+    car.brand = brand;
+    car.minprice = minprice;
+    car.maxprice = maxprice;
+    car.category = category;
+    car.fuelType = fuelType;
+    car.transmission = transmission;
+    car.year = year;
+    car.seats = seats;
+    car.image = image;
+
+    await car.save();
+
+    res.status(200).json({ message: 'Car updated successfully', car });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Something went wrong while updating the car' });
+  }
+});
+
 
 module.exports = router;

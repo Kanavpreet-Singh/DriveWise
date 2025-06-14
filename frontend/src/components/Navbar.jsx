@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import Logo from "../assets/logo.png"
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { isLoggedIn, logout } = useAuth();
 
-  
+  const navigate = useNavigate();
 
   
 
@@ -34,7 +36,7 @@ const Navbar = () => {
   return (
     <nav className="bg-white text-blue border border-gray px-4 py-3 flex items-center justify-between">
       
-      <div className="text-xl font-bold ml-4">MySite</div>
+      <div onClick={()=>{navigate('/')}} className=""><img className='h-12 w-28' src={Logo} alt="" /></div>
 
       {/* Desktop menu */}
       <div className="hidden md:flex space-x-6 mr-4">

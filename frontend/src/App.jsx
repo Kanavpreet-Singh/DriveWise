@@ -11,6 +11,7 @@ import Catalogue from "./pages/Catalogue";
 import AddCar from "./pages/AddCar";
 import CarDetails from "./pages/CarDetails";
 import Home from "./pages/Home";
+import Footer from "./components/Footer";
 function App() {
   
 
@@ -28,6 +29,8 @@ function App() {
       <Route path="/dealer" element={<DealerProfile/>} />
       <Route path="/customer" element={<CustomerProfile/>} />
       </Routes>
+
+      <Footer/>
 
       <ToastContainer position="top-right" autoClose={2000} />
 

@@ -34,7 +34,7 @@ const Navbar = () => {
   );
 
   return (
-    <nav className="bg-white text-blue border border-gray px-4 py-3 flex items-center justify-between">
+    <nav className="bg-gray text-blue border border-gray px-4 py-3 flex items-center justify-between">
       
       <div onClick={()=>{navigate('/')}} className=""><img className='h-12 w-28' src={Logo} alt="" /></div>
 

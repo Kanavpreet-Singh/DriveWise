@@ -8,7 +8,7 @@ const { z } = require('zod');
 const otpStore = new Map();
 const bcrypt=require("bcrypt");
 const userAuth = require("../middleware/authentication/user");
-const { Car } = require("../models/Car");
+const  Car  = require("../models/Car");
 const rateLimitMap = new Map(); // email -> timestamp of last OTP request
 
 router.post("/signup-request", async (req, res) => {
@@ -193,7 +193,7 @@ router.post('/signin',async(req,res)=>{
 router.get('/dealer',userAuth,async(req,res)=>{
 
   const {userId}=req.user;
-
+  console.log(userId);
   let dealer=await User.findById(userId);
 
   if(!dealer) {
@@ -202,7 +202,10 @@ router.get('/dealer',userAuth,async(req,res)=>{
 
   }
 
-  let cars=await Car.find({listedby:userId});
+  console.log(dealer);
+
+  let cars=await Car.find({listedby:dealer._id});
+  
 
   return res.status(200).json({message:'dealer found',dealer:dealer,cars:cars});
 

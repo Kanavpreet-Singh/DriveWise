@@ -7,8 +7,9 @@ import Logo from "../assets/logo.png"
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const { isLoggedIn, logout } = useAuth();
+  const { isLoggedIn, logout,user } = useAuth();
   const navigate = useNavigate();
+  
 
   const handleLogout = () => {
     logout();
@@ -19,7 +20,12 @@ const Navbar = () => {
   const handleShowProfile = () => {
     setIsProfileOpen(false);
     // You can implement your profile logic here
-    navigate('/profile'); // Example: navigate to profile page
+    if(user.role=='dealer'){
+      navigate(`/dealer`); 
+    }
+    else{
+      navigate('/customer'); 
+    }
   };
 
   const hamburger = (

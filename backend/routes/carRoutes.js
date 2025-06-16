@@ -1,8 +1,9 @@
 const express = require("express");
 const  Car  = require("../models/Car");
 const userAuth = require("../middleware/authentication/user");
-
+const  User  = require("../models/User");
 const router = express.Router();
+
 
 router.get('/allcars', async (req, res) => {
   try {
@@ -116,6 +117,39 @@ router.post('/:id', userAuth, async (req, res) => {
     console.error(err);
     res.status(500).json({ message: 'Something went wrong while updating the car' });
   }
+});
+router.post('/like/:id', userAuth, async (req, res) => {
+  try {
+    const { userId } = req.user;
+    const carId = req.params.id;
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Prevent duplicate likes
+    if (!user.likedlist.includes(carId)) {
+      user.likedlist.push(carId);
+      await user.save();
+    }
+
+    return res.status(200).json({ message: 'Car added to wishlist' });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.delete('/unlike/:id', userAuth, async (req, res) => {
+  const { userId } = req.user;
+  const carId = req.params.id;
+
+  const user = await User.findById(userId);
+  if (!user) return res.status(404).json({ message: 'User not found' });
+
+  user.likedlist = user.likedlist.filter(id => id.toString() !== carId);
+  await user.save();
+
+  res.status(200).json({ message: 'Unliked' });
 });
 
 

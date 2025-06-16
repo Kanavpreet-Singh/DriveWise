@@ -1,11 +1,72 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-const CarCard = ({ name, brand, minprice, maxprice, image,_id,listedby }) => {
+import { FaHeart, FaRegHeart } from 'react-icons/fa';
+import axios from 'axios';
+import { toast } from 'react-toastify';
+const CarCard = ({ name, brand, minprice, maxprice, image, _id, listedby }) => {
   const { user } = useAuth();
-    const navigate = useNavigate();
+  const navigate = useNavigate();
+  const backend_url = import.meta.env.VITE_BACKEND_URL;
+
+  const [liked, setLiked] = useState(false);
+
+  const fetchUserAndCheckLiked = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const res = await axios.get(`${backend_url}/user/getuser`, {
+        headers: { token },
+      });
+
+      const updatedUser = res.data.user;
+      setLiked(updatedUser?.likedlist?.includes(_id));
+    } catch (error) {
+      console.error("Failed to fetch user:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchUserAndCheckLiked();
+  }, [_id]);
+
+  const toggleLike = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      if (liked) {
+        await axios.delete(`${backend_url}/car/unlike/${_id}`, {
+          headers: { token },
+        });
+        toast.info('Removed from wishlist!');
+      } else {
+        await axios.post(`${backend_url}/car/like/${_id}`, {}, {
+          headers: { token },
+        });
+        toast.success('Added to wishlist!');
+      }
+
+      // Refetch user after toggle to keep status updated
+      fetchUserAndCheckLiked();
+    } catch (error) {
+      console.error('Failed to toggle like:', error);
+    }
+  };
+
   return (
-    <div className="bg-white rounded-lg overflow-hidden shadow-md border border-[#E5E5E5] transition-transform hover:scale-105 w-full max-w-sm mx-auto">
+    <div className="bg-white relative rounded-lg overflow-hidden shadow-md border border-[#E5E5E5] transition-transform hover:scale-105 w-full max-w-sm mx-auto">
+      {/* Heart icon */}
+      {user && (
+        <button
+          className="absolute top-3 right-3 text-xl text-gray-600 hover:text-red-600 transition-colors"
+          onClick={toggleLike}
+        >
+          {liked ? <FaHeart className="text-red-500" /> : <FaRegHeart />}
+        </button>
+      )}
+
       <img src={image} alt={`${name} image`} className="w-full h-48 object-cover" />
 
       <div className="p-4 space-y-2">

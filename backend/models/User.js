@@ -30,6 +30,10 @@ const userSchema = new Schema({
     enum: ['dealer', 'customer'],
     default: 'customer'
   },
+  likedlist:{
+    type:[Schema.Types.ObjectId],
+    ref:'Car'
+  }
 
 });
 

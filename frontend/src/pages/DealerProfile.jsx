@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { useAuth } from '../context/AuthContext';
+import { toast } from 'react-toastify';
+import { useNavigate } from 'react-router-dom';
 
 const DealerProfile = () => {
+  const navigate = useNavigate();
   const backend_url = import.meta.env.VITE_BACKEND_URL;
   const [user, setUser] = useState(null);
   const [cars, setCars] = useState([]);
@@ -11,6 +13,12 @@ const DealerProfile = () => {
     const fetchDealerInfo = async () => {
       try {
         const token = localStorage.getItem('token');
+
+        if(!token){
+          toast.error("Please login to access this page.");
+          navigate('/signin')
+        }
+
         const res = await axios.get(`${backend_url}/user/dealer`, {
           headers: { token }
         });

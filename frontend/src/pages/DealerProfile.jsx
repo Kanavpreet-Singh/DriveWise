@@ -14,9 +14,10 @@ const DealerProfile = () => {
       try {
         const token = localStorage.getItem('token');
 
-        if(!token){
+        if (!token) {
           toast.error("Please login to access this page.");
-          navigate('/signin')
+          navigate('/signin');
+          return;
         }
 
         const res = await axios.get(`${backend_url}/user/dealer`, {
@@ -27,6 +28,7 @@ const DealerProfile = () => {
         setCars(res.data.cars);
       } catch (error) {
         console.error(error);
+        toast.error("Error fetching dealer data.");
       }
     };
 
@@ -70,6 +72,40 @@ const DealerProfile = () => {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Wishlist Section */}
+      <h2 className="text-2xl mt-12 mb-4 font-semibold text-[#14213D]">Your Wishlist</h2>
+      {user.likedlist && user.likedlist.length > 0 ? (
+        <div className="overflow-x-auto">
+          <table className="min-w-full bg-white border border-gray-300 rounded-lg shadow-sm">
+            <thead className="bg-gray-100 text-left">
+              <tr>
+                <th className="py-2 px-4">Car Name</th>
+                <th className="py-2 px-4">Brand</th>
+                <th className="py-2 px-4">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {user.likedlist.map((car) => (
+                <tr key={car._id} className="border-t">
+                  <td className="py-2 px-4">{car.name}</td>
+                  <td className="py-2 px-4">{car.brand}</td>
+                  <td className="py-2 px-4">
+                    <button
+                      onClick={() => navigate(`/catalogue/${car._id}`)}
+                      className="bg-[#FCA311] text-white px-3 py-1 rounded hover:bg-[#e59400] transition"
+                    >
+                      View
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="text-gray-600">You haven't liked any cars yet.</p>
       )}
     </div>
   );

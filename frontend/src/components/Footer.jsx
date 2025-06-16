@@ -2,7 +2,7 @@ import React from 'react';
 
 const Footer = () => {
   return (
-    <footer className="bg-[var(--color-blue)] text-[var(--color-white)] py-8">
+    <footer className="bg-[var(--color-blue)] text-[var(--color-white)] py-8 ">
       <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
         
         {/* Brand Section */}

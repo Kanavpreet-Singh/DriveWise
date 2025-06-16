@@ -194,7 +194,7 @@ router.get('/getuser',userAuth,async(req,res)=>{
 
   const {userId}=req.user;
   console.log(userId);
-  let user=await User.findById(userId);
+  let user=await User.findById(userId).populate('likedlist');
 
   if(!user) {
 
@@ -206,26 +206,23 @@ router.get('/getuser',userAuth,async(req,res)=>{
 
 });
 
-
-router.get('/dealer',userAuth,async(req,res)=>{
-
-  const {userId}=req.user;
+router.get('/dealer', userAuth, async (req, res) => {
+  const { userId } = req.user;
   console.log(userId);
-  let dealer=await User.findById(userId);
 
-  if(!dealer) {
+  let dealer = await User.findById(userId).populate('likedlist'); 
 
-    return res.status(400).json({message:'dealer not found'})
-
+  if (!dealer) {
+    return res.status(400).json({ message: 'dealer not found' });
   }
 
-  console.log(dealer);
+  let cars = await Car.find({ listedby: dealer._id });
 
-  let cars=await Car.find({listedby:dealer._id});
-  
-
-  return res.status(200).json({message:'dealer found',dealer:dealer,cars:cars});
-
+  return res.status(200).json({
+    message: 'dealer found',
+    dealer,
+    cars,
+  });
 });
 
 

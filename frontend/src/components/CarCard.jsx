@@ -21,7 +21,10 @@ const CarCard = ({ name, brand, minprice, maxprice, image, _id, listedby }) => {
       });
 
       const updatedUser = res.data.user;
-      setLiked(updatedUser?.likedlist?.includes(_id));
+      setLiked(
+        updatedUser?.likedlist?.some(car => car._id.toString() === _id)
+      );
+
     } catch (error) {
       console.error("Failed to fetch user:", error);
     }

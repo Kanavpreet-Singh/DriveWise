@@ -193,7 +193,7 @@ router.post('/signin',async(req,res)=>{
 router.get('/getuser',userAuth,async(req,res)=>{
 
   const {userId}=req.user;
-  console.log(userId);
+  
   let user=await User.findById(userId).populate('likedlist');
 
   if(!user) {
@@ -208,7 +208,7 @@ router.get('/getuser',userAuth,async(req,res)=>{
 
 router.get('/dealer', userAuth, async (req, res) => {
   const { userId } = req.user;
-  console.log(userId);
+  
 
   let dealer = await User.findById(userId).populate('likedlist'); 
 

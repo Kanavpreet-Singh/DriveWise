@@ -7,12 +7,21 @@ const router = express.Router();
 
 router.get('/allcars', async (req, res) => {
   try {
-    const cars = await Car.find({});
-    return res.status(200).json({ cars });
+    const filters = {};
+    const allowedFields = ['brand', 'fuelType', 'transmission', 'seats', 'category'];
+    allowedFields.forEach((field) => {
+      if (req.query[field]) {
+        filters[field] = req.query[field];
+      }
+    });
+
+    const cars = await Car.find(filters);
+    res.status(200).json({ cars });
   } catch (error) {
-    return res.status(500).json({ message: 'Error fetching cars' });
+    res.status(500).json({ message: 'Server error' });
   }
 });
+
 
 router.post('/add', userAuth, async (req, res) => {
   const {

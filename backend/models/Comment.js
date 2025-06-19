@@ -1,5 +1,5 @@
-import { Schema, model } from "mongoose";
-
+const mongoose = require("mongoose");
+const { Schema, model } = mongoose;
 const commentSchema = new Schema({
   car: {
     type: Schema.Types.ObjectId,
@@ -25,4 +25,5 @@ const commentSchema = new Schema({
   }
 });
 
-export const Comment = model("Comment", commentSchema);
+const Comment=model('Comment',commentSchema);
+module.exports = Comment;

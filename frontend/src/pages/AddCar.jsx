@@ -16,7 +16,7 @@ const AddCar = () => {
     } else if (user.role !== 'dealer') {
       // Logged in but not a dealer
       toast.error("Login with PEC id to add car.");
-      navigate('/'); // optional: make a page or redirect home
+      navigate('/');
     }
   }, [user, navigate]);
 

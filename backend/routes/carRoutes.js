@@ -169,17 +169,38 @@ router.post("/comment/:id",userAuth,async(req,res)=>{
 
   const id=req.params.id;
 
-  let car=await Car.findById(id);
+  
 
   let r=new Comment({
-    car:car._id,
+    car:id,
     user:userId,
     text:comment
   });
 
   await r.save();
 
-})
+  res.status(200).json({ message: 'comment added' });
+
+});
+
+router.get("/comment/:id", userAuth, async (req, res) => {
+  const id = req.params.id;
+
+  try {
+    const comments = await Comment.find({ car: id })
+      .populate('user', 'username email') 
+      .sort({ createdAt: -1 }); 
+
+    res.status(200).json({ comments });
+  } catch (error) {
+    console.error('Error fetching comments:', error);
+    res.status(500).json({ message: 'Failed to fetch comments' });
+  }
+});
+
+
+
+
 
 
 module.exports = router;

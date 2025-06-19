@@ -14,7 +14,9 @@ const Navbar = () => {
   const handleLogout = () => {
     logout();
     setIsProfileOpen(false);
+    navigate('/');
     toast.success("You are logged out");
+    
   };
 
   const handleShowProfile = () => {

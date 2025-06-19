@@ -1,5 +1,6 @@
 const express = require("express");
 const  Car  = require("../models/Car");
+const  Comment  = require("../models/Comment");
 const userAuth = require("../middleware/authentication/user");
 const  User  = require("../models/User");
 const router = express.Router();
@@ -160,6 +161,25 @@ router.delete('/unlike/:id', userAuth, async (req, res) => {
 
   res.status(200).json({ message: 'Unliked' });
 });
+
+router.post("/comment/:id",userAuth,async(req,res)=>{
+  const {comment}=req.body;
+
+  const {userId}=req.user
+
+  const id=req.params.id;
+
+  let car=await Car.findById(id);
+
+  let r=new Comment({
+    car:car._id,
+    user:userId,
+    text:comment
+  });
+
+  await r.save();
+
+})
 
 
 module.exports = router;

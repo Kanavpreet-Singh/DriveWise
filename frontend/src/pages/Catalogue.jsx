@@ -178,21 +178,27 @@ const Catalogue = () => {
     </div>
 
       {/* Cars Grid */}
-      <h2 className="text-2xl font-bold mb-4 text-[#14213D]">All Cars</h2>
-      <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-        {cars.map((car) => (
-          <CarCard
-            key={car._id}
-            name={car.name}
-            brand={car.brand}
-            minprice={car.minprice}
-            maxprice={car.maxprice}
-            image={car.image}
-            _id={car._id}
-            listedby={car.listedby}
-          />
-        ))}
-      </div>
+      {cars.length === 0 ? (
+  <div className="text-center text-gray-500 text-lg py-12">
+    No cars found for the selected filters.
+  </div>
+) : (
+  <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+    {cars.map((car) => (
+      <CarCard
+        key={car._id}
+        name={car.name}
+        brand={car.brand}
+        minprice={car.minprice}
+        maxprice={car.maxprice}
+        image={car.image}
+        _id={car._id}
+        listedby={car.listedby}
+      />
+    ))}
+  </div>
+)}
+
     </div>
   );
 };

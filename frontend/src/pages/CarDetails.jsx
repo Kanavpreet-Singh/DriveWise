@@ -20,6 +20,20 @@ const CarDetails = () => {
 
   if (!car) return <p>Loading car details...</p>;
 
+  let handleCommentSubmit = async () => {
+
+    const comment = document.getElementById('comments').value;
+    if (comment.trim() === '') {
+      alert('Please enter a comment before submitting.');
+      return;
+    }
+    
+    
+    let response = await axios.post(`/cars/comment/${carId}`,{})
+    document.getElementById('comments').value = ''; 
+    alert('Comment submitted successfully!');
+  }
+
   return (
   <div className="flex justify-center items-center min-h-screen bg-gray-50">
     <div className="max-w-2xl w-full bg-white rounded-lg shadow-md overflow-hidden">
@@ -69,6 +83,13 @@ const CarDetails = () => {
 
         <button className="bg-yellow hover:bg-blue text-white font-bold py-3 px-6 rounded-lg transition duration-200">
           View Dealerships
+        </button>
+
+        <h1 className='text-xl font-bold text-gray-800 mb-4'>Comments</h1>
+
+        <textarea name="comments" id="comments" rows="4" className="w-full p-2 border border-gray-300 rounded-lg"></textarea>
+        <button onClick={handleCommentSubmit} className="bg-yellow hover:bg-blue text-white font-bold py-2 px-4 rounded-lg mt-2 transition duration-200">
+          Submit Comment
         </button>
       </div>
     </div>

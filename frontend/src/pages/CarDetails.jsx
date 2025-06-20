@@ -141,20 +141,37 @@ const CarDetails = () => {
           )}
 
           <div className="mt-10 text-left">
-            <h3 className="text-xl font-semibold text-[#14213D] mb-4">Comments</h3>
-            {comments.length === 0 ? (
-              <p className="text-gray-500">No comments yet.</p>
-            ) : (
-              <div className="space-y-4">
-                {comments.map((comment, index) => (
-                  <div key={index} className="bg-gray-100 p-3 rounded-lg shadow-sm">
-                    <p className="text-sm font-bold text-gray-700 mb-1">{comment.user?.username}</p>
-                    <p className="text-gray-800">{comment.text}</p>
-                  </div>
-                ))}
-              </div>
-            )}
+  <h3 className="text-xl font-semibold text-[#14213D] mb-4">Comments</h3>
+
+  {comments.length === 0 ? (
+    <p className="text-gray-500">No comments yet.</p>
+  ) : (
+    <div className="space-y-4">
+      {comments.map((comment, index) => (
+        <div
+          key={index}
+          className="flex items-start bg-gray-100 p-4 rounded-lg shadow-sm"
+        >
+          <img
+            src={
+              comment.user?.profilePic ||
+              "https://res.cloudinary.com/decprn8rm/image/upload/v1750436169/Screenshot_2025-06-20_214548_lwtrzl.png"
+            }
+            alt="User profile"
+            className="w-10 h-10 rounded-full mr-4 object-cover border border-gray-300"
+          />
+          <div>
+            <p className="text-sm font-semibold text-gray-800 mb-1">
+              {comment.user?.username || "Anonymous"}
+            </p>
+            <p className="text-gray-700 text-sm">{comment.text}</p>
           </div>
+        </div>
+      ))}
+    </div>
+  )}
+</div>
+
         </div>
       </div>
     </div>

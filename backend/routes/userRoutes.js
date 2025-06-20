@@ -27,6 +27,12 @@ router.post("/signup-request", async (req, res) => {
       .string()
       .min(3, "Password must be at least 3 characters")
       .max(50, "Password must be at most 50 characters"),
+
+    profilePic: z
+      .string()
+      .url("Profile picture must be a valid URL")
+      .optional()
+      .default("https://res.cloudinary.com/demo/image/upload/v1718040000/default_profile.png") // ✅ Default fallback
   });
 
   const validationResult = signupRequestSchema.safeParse(req.body);
@@ -36,12 +42,11 @@ router.post("/signup-request", async (req, res) => {
     return res.status(400).json({ message: errors[0] }); 
   }
 
-  const { username, email, password } = validationResult.data;
+  const { username, email, password, profilePic } = validationResult.data;
 
-  
   const now = Date.now();
   const lastRequestTime = rateLimitMap.get(email);
-  const COOLDOWN = 2 * 60 * 1000; 
+  const COOLDOWN = 2 * 60 * 1000; // 2 minutes cooldown
 
   if (lastRequestTime && now - lastRequestTime < COOLDOWN) {
     const waitTime = Math.ceil((COOLDOWN - (now - lastRequestTime)) / 1000);
@@ -57,8 +62,9 @@ router.post("/signup-request", async (req, res) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpiry = Date.now() + 5 * 60 * 1000; // 5 mins
 
-    otpStore.set(email, { otp, otpExpiry, username, password });
-    rateLimitMap.set(email, now); // ✅ Update rate limit timestamp
+    
+    otpStore.set(email, { otp, otpExpiry, username, password, profilePic });
+    rateLimitMap.set(email, now);
 
     const transporter = nodemailer.createTransport({
       service: "gmail",
@@ -76,7 +82,7 @@ router.post("/signup-request", async (req, res) => {
     };
 
     // await transporter.sendMail(mailOptions);
-    console.log(otp);
+    console.log("OTP:", otp);
 
     res.status(200).json({ message: "OTP sent to email." });
   } catch (err) {
@@ -84,6 +90,7 @@ router.post("/signup-request", async (req, res) => {
     res.status(500).json({ message: "Failed to send OTP." });
   }
 });
+
 
 router.post("/signup-verify", async (req, res) => {
   const { email, otp } = req.body;
@@ -93,7 +100,7 @@ router.post("/signup-verify", async (req, res) => {
     return res.status(400).json({ message: "OTP not requested for this email" });
   }
 
-  const { otp: storedOtp, otpExpiry, username, password } = record;
+  const { otp: storedOtp, otpExpiry, username, password, profilePic } = record;
 
   if (Date.now() > otpExpiry) {
     otpStore.delete(email);
@@ -103,26 +110,22 @@ router.post("/signup-verify", async (req, res) => {
   if (otp !== storedOtp) {
     return res.status(400).json({ message: "Invalid OTP" });
   }
-  console.log('you entered'+otp);
-  console.log('stored otp is'+storedOtp);
-
-  const hashedPassword=await bcrypt.hash(password,5);
-
-  const isInstituteEmail = email.endsWith("@pec.edu.in");
 
   try {
-    // Save user to DB only after OTP is valid
+    const hashedPassword = await bcrypt.hash(password, 5);
+    const isInstituteEmail = email.endsWith("@pec.edu.in");
+
     const newUser = new User({
       username,
       email,
-      password:hashedPassword,
+      password: hashedPassword,
       isVerified: true,
       role: isInstituteEmail ? "dealer" : "customer",
+      profilePic: profilePic || "https://res.cloudinary.com/demo/image/upload/v1718040000/default_profile.png" // fallback
     });
 
     await newUser.save();
 
-    // Clean up OTP from memory
     otpStore.delete(email);
 
     res.status(201).json({ message: "User registered successfully" });
@@ -131,6 +134,7 @@ router.post("/signup-verify", async (req, res) => {
     res.status(500).json({ message: "Error saving user" });
   }
 });
+
 
 router.post('/signin',async(req,res)=>{
 
@@ -168,7 +172,7 @@ router.post('/signin',async(req,res)=>{
     }
 
     const token = jwt.sign(
-      { userId: user._id, email: user.email,username:user.username,role:user.role },
+      { userId: user._id, email: user.email,username:user.username,role:user.role,profilePic: user.profilePic },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );

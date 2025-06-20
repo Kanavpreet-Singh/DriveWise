@@ -187,7 +187,7 @@ router.get("/comment/:id", userAuth, async (req, res) => {
 
   try {
     const comments = await Comment.find({ car: id })
-      .populate('user', 'username email') 
+      .populate('user', 'username email profilePic') 
       .sort({ createdAt: -1 }); 
 
     res.status(200).json({ comments });

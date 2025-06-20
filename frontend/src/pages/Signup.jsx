@@ -12,14 +12,35 @@ const Signup = () => {
   const [otp, setOtp] = useState('');
   const [showOtpField, setShowOtpField] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [profileMethod, setProfileMethod] = useState('url'); // 'url' or 'file'
+  const [imageFile, setImageFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
     email: '',
-    password: ''
+    password: '',
+    profilePic: ''
   });
 
   
   const navigate = useNavigate();
+
+  const uploadToCloudinary = async () => {
+  setUploading(true);
+  const data = new FormData();
+  data.append("file", imageFile);
+  data.append("upload_preset", import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/upload`, {
+    method: 'POST',
+    body: data,
+  });
+  const json = await res.json();
+  setUploading(false);
+  return json.secure_url;
+};
+
 
 
   const handleChange = (e) => {
@@ -35,23 +56,34 @@ const Signup = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    
-    try {
-      const { username, email, password } = formData;
-      const response = await axios.post(`${backend_url}/user/signup-request`, {
-        username, email, password
-      });
-      
-      toast.success(response.data.message);
-      setShowOtpField(true);
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Signup request failed');
-    } finally {
-      setIsLoading(false);
+  e.preventDefault();
+  setIsLoading(true);
+
+  try {
+    let profilePicUrl = formData.profilePic;
+
+    if (profileMethod === 'file' && imageFile) {
+      profilePicUrl = await uploadToCloudinary();
     }
-  };
+
+    const { username, email, password } = formData;
+
+    const response = await axios.post(`${backend_url}/user/signup-request`, {
+      username,
+      email,
+      password,
+      profilePic: profilePicUrl
+    });
+
+    toast.success(response.data.message);
+    setShowOtpField(true);
+  } catch (error) {
+    toast.error(error.response?.data?.message || 'Signup request failed');
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   const handleOtpSubmit = async (e) => {
     e.preventDefault();
@@ -119,6 +151,42 @@ const Signup = () => {
                 required
               />
             </div>
+
+            <div className="space-y-2">
+            <label className="block text-[#14213D] text-sm font-medium">Profile Picture</label>
+            
+            <select
+              value={profileMethod}
+              onChange={(e) => setProfileMethod(e.target.value)}
+              className="w-full border px-3 py-2 rounded"
+            >
+              <option value="url">Enter Image URL</option>
+              <option value="file">Upload Image File</option>
+            </select>
+
+            {profileMethod === 'url' ? (
+              <input
+                type="text"
+                name="profilePic"
+                placeholder="Paste image URL"
+                value={formData.profilePic}
+                onChange={handleChange}
+                className="w-full px-4 py-3 rounded border border-[#E5E5E5]"
+                required
+              />
+            ) : (
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setImageFile(e.target.files[0])}
+                className="w-full px-4 py-3 rounded border border-[#E5E5E5]"
+                required
+              />
+            )}
+
+            {uploading && <p className="text-sm text-gray-500">Uploading image...</p>}
+          </div>
+
             
             <button
               type="submit"

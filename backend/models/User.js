@@ -33,7 +33,11 @@ const userSchema = new Schema({
   likedlist:{
     type:[Schema.Types.ObjectId],
     ref:'Car'
-  }
+  },
+  profilePic:{
+    type:String,
+    required:true,
+    default:"https://res.cloudinary.com/decprn8rm/image/upload/v1750436169/Screenshot_2025-06-20_214548_lwtrzl.png"}
 
 });
 

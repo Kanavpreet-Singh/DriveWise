@@ -1,25 +1,16 @@
-import React, { useState,useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-const AddCar = () => {
 
-   const { user } = useAuth();
+const AddCar = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!user) {
-      // Not logged in
-      toast.error("Please login to access this page.");
-      navigate('/signin'); // redirect to login
-    } else if (user.role !== 'dealer') {
-      // Logged in but not a dealer
-      toast.error("Login with PEC id to add car.");
-      navigate('/');
-    }
-  }, [user, navigate]);
-
+  const [imageSource, setImageSource] = useState('upload');
+  const [imageFile, setImageFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -36,6 +27,16 @@ const AddCar = () => {
 
   const backend_url = import.meta.env.VITE_BACKEND_URL;
 
+  useEffect(() => {
+    if (!user) {
+      toast.error("Please login to access this page.");
+      navigate('/signin');
+    } else if (user.role !== 'dealer') {
+      toast.error("Login with PEC id to add car.");
+      navigate('/');
+    }
+  }, [user, navigate]);
+
   const brands = ['Toyota', 'Hyundai', 'Suzuki', 'Honda', 'Tata', 'Mahindra', 'Kia', 'BMW', 'Mercedes-Benz', 'Audi', 'Tesla', 'Volkswagen'];
   const categories = ['Hatchback', 'Sedan', 'SUV', 'Luxury', 'Super Luxury'];
   const fuelTypes = ['Petrol', 'Diesel', 'CNG', 'Electric', 'Hybrid'];
@@ -49,20 +50,42 @@ const AddCar = () => {
     }));
   };
 
+  const handleImageChange = (e) => {
+    setImageFile(e.target.files[0]);
+  };
+
+  const uploadToCloudinary = async () => {
+    setUploading(true);
+    const data = new FormData();
+    data.append('file', imageFile);
+    data.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+
+    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/upload`, {
+      method: 'POST',
+      body: data,
+    });
+
+    const json = await res.json();
+    setUploading(false);
+    return json.secure_url;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
+      let imageUrl = formData.image;
+
+      if (imageSource === 'upload' && imageFile) {
+        imageUrl = await uploadToCloudinary();
+      }
+
       const token = localStorage.getItem('token');
-      const res = await axios.post(
-        `${backend_url}/car/add`, 
-        formData,
-        {
-          headers: {
-            token: token,
-          },
-        }
-      );
+      const res = await axios.post(`${backend_url}/car/add`,
+        { ...formData, image: imageUrl },
+        { headers: { token } });
 
       toast.success(res.data.message);
 
@@ -78,9 +101,11 @@ const AddCar = () => {
         seats: '',
         image: '',
       });
+      setImageFile(null);
       navigate('/catalogue');
     } catch (error) {
       toast.error(error.response?.data?.message || 'Something went wrong');
+      setUploading(false);
     }
   };
 
@@ -115,10 +140,42 @@ const AddCar = () => {
 
         <input name="year" type="number" placeholder="Year" required className="w-full border px-3 py-2" value={formData.year} onChange={handleChange} />
         <input name="seats" type="number" placeholder="Seats" className="w-full border px-3 py-2" value={formData.seats} onChange={handleChange} />
-        <input name="image" type="text" placeholder="Image URL" className="w-full border px-3 py-2" value={formData.image} onChange={handleChange} />
 
-        <button type="submit" className="bg-yellow text-white px-4 py-2 rounded shadow" style={{ boxShadow: '0 2px 6px var(--color-gray)' }}>
-          Add Car
+        {/* Image Source Selector */}
+        <div className="space-y-2">
+          <label className="block font-semibold text-gray-700">Image Source</label>
+          <select
+            className="w-full border px-3 py-2 rounded"
+            value={imageSource}
+            onChange={(e) => setImageSource(e.target.value)}
+          >
+            <option value="upload">Upload Image File</option>
+            <option value="url">Paste Online Image URL</option>
+          </select>
+
+          {imageSource === 'upload' ? (
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              className="w-full border px-3 py-2 rounded"
+            />
+          ) : (
+            <input
+              type="text"
+              name="image"
+              placeholder="Enter image URL"
+              value={formData.image}
+              onChange={handleChange}
+              className="w-full border px-3 py-2 rounded"
+            />
+          )}
+        </div>
+
+        {uploading && <p className="text-sm text-gray-500">Uploading image...</p>}
+
+        <button type="submit" className="bg-yellow text-white px-4 py-2 rounded shadow" disabled={uploading}>
+          {uploading ? 'Uploading...' : 'Add Car'}
         </button>
       </form>
     </div>

@@ -23,7 +23,6 @@ router.get('/allcars', async (req, res) => {
   }
 });
 
-
 router.post('/add', userAuth, async (req, res) => {
   const {
     name,
@@ -35,11 +34,11 @@ router.post('/add', userAuth, async (req, res) => {
     transmission,
     year,
     seats,
-    image
+    image, 
   } = req.body;
 
-  
-  if (!name || !brand || !minprice || !maxprice || !category) {
+ 
+  if (!name || !brand || !minprice || !maxprice || !category || !image) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
 
@@ -56,14 +55,14 @@ router.post('/add', userAuth, async (req, res) => {
       seats,
       image,
       colorOptions: ['white', 'black'],
-      listedby: req.user.userId  
+      listedby: req.user.userId,
     });
 
     await newCar.save();
 
     res.status(200).json({
       message: 'Car added successfully',
-      car: newCar
+      car: newCar,
     });
   } catch (error) {
     console.error('Error adding car:', error);

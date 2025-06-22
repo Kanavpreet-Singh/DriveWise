@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import CarCard from '../components/CarCard';
-
+import { FaPlus } from 'react-icons/fa';
 const Catalogue = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -69,10 +69,12 @@ const Catalogue = () => {
         <div className="mb-6">
           <button
             onClick={() => navigate('/addcar')}
-            className="bg-[var(--color-yellow)] text-white px-4 py-2 rounded-md shadow-[0_2px_4px_var(--color-gray)]"
+            className="flex items-center gap-2 text-[#FCA311] border border-[#FCA311] px-5 py-2 rounded-md font-semibold transition duration-200 ease-in-out hover:bg-[#FCA311] hover:text-[#14213D] shadow-sm"
           >
+            <FaPlus className="text-sm" />
             Add Listing
           </button>
+
         </div>
       )}
 
@@ -161,10 +163,11 @@ const Catalogue = () => {
       <div className="mt-6 flex flex-wrap gap-4">
         <button
           onClick={handleApplyFilters}
-          className="bg-[#FCA311] hover:bg-[#e59400] text-white font-semibold px-6 py-2 rounded-lg transition"
+          className="border border-[#FCA311] text-[#FCA311] px-5 py-2 rounded-md font-medium transition duration-200 ease-in-out hover:bg-[#FCA311] hover:text-[#14213D]"
         >
           Apply Filters
         </button>
+
 
         {filtersApplied && (
           <button

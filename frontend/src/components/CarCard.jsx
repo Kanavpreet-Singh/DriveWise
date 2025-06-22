@@ -67,12 +67,26 @@ const CarCard = ({ name, brand, minprice, maxprice, image, _id, listedby }) => {
         headers: { token },
       });
       toast.success('Car deleted successfully!');
-      window.location.reload(); // or call parent callback to update UI
+      window.location.reload(); 
     } catch (error) {
       console.error('Delete error:', error);
       toast.error('Failed to delete the car.');
     }
   };
+  const formatAmount = (amount) => {
+  if (amount >= 10000000) {
+    return (amount / 10000000).toFixed(2);
+  } else {
+    return (amount / 100000).toFixed(2);
+  }
+};
+
+  const getPriceUnit = (amount) => {
+    return amount >= 10000000 ? 'Cr' : 'Lakh';
+  };
+
+
+
 
   return (
     <div className="bg-white relative rounded-lg overflow-hidden shadow-md border border-[#E5E5E5] transition-transform  w-full max-w-sm mx-auto">
@@ -90,11 +104,15 @@ const CarCard = ({ name, brand, minprice, maxprice, image, _id, listedby }) => {
 
       <div className="p-4 space-y-2">
         <h2 className="text-[#14213D] font-semibold text-lg">{name}</h2>
-        <p className="text-[#14213D] text-sm">₹{minprice} - {maxprice}</p>
+        <p className="text-[#14213D] text-sm">
+          ₹{formatAmount(minprice)} - {formatAmount(maxprice)} {getPriceUnit(maxprice)}
+        </p>
+
+
 
         <div className="flex gap-4">
           <button
-            className="w-1/3 bg-[#FCA311] text-black font-semibold py-2 rounded hover:bg-[#e59400] transition-colors"
+            className="w-1/3 text-[#FCA311] border border-[#FCA311] py-2 rounded transition duration-200 ease-in-out hover:bg-[#FCA311] hover:text-[#14213D]"
             onClick={() => navigate(`/catalogue/${_id}`)}
           >
             View Offers
@@ -103,7 +121,7 @@ const CarCard = ({ name, brand, minprice, maxprice, image, _id, listedby }) => {
           {user?.userId === listedby && (
             <>
               <button
-                className="w-1/3 bg-[#FCA311] text-black font-semibold py-2 rounded hover:bg-[#e59400] transition-colors"
+                className="px-4 text-[#FCA311] border border-[#FCA311]  py-2 rounded transition duration-200 ease-in-out hover:bg-[#FCA311] hover:text-[#14213D]"
                 onClick={() => navigate(`/edit/${_id}`)}
               >
                 Edit

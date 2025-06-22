@@ -197,9 +197,30 @@ router.get("/comment/:id", userAuth, async (req, res) => {
   }
 });
 
+router.delete('/:id', userAuth, async (req, res) => {
+  const id = req.params.id;
 
+  try {
+    const car = await Car.findById(id);
 
+    if (!car) {
+      return res.status(404).json({ message: 'Car not found' });
+    }
 
+    
+    if (car.listedby.toString() !== req.user.userId) {
+      return res.status(403).json({ message: 'Unauthorized to delete this listing' });
+    }
 
+    
+    await Car.findByIdAndDelete(id);
+    await Comment.deleteMany({ car: id });
+
+    res.status(200).json({ message: 'Listing deleted successfully' });
+  } catch (error) {
+    console.error('Delete error:', error);
+    res.status(500).json({ message: 'Something went wrong while deleting' });
+  }
+});
 
 module.exports = router;

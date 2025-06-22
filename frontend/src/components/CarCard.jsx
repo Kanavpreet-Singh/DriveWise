@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FaHeart, FaRegHeart } from 'react-icons/fa';
+import { FaHeart, FaRegHeart, FaTrash } from 'react-icons/fa';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+
 const CarCard = ({ name, brand, minprice, maxprice, image, _id, listedby }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -24,7 +25,6 @@ const CarCard = ({ name, brand, minprice, maxprice, image, _id, listedby }) => {
       setLiked(
         updatedUser?.likedlist?.some(car => car._id.toString() === _id)
       );
-
     } catch (error) {
       console.error("Failed to fetch user:", error);
     }
@@ -51,15 +51,31 @@ const CarCard = ({ name, brand, minprice, maxprice, image, _id, listedby }) => {
         toast.success('Added to wishlist!');
       }
 
-      // Refetch user after toggle to keep status updated
       fetchUserAndCheckLiked();
     } catch (error) {
       console.error('Failed to toggle like:', error);
     }
   };
 
+  const handleDelete = async () => {
+    const confirmed = window.confirm('Are you sure you want to delete this listing?');
+    if (!confirmed) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${backend_url}/car/${_id}`, {
+        headers: { token },
+      });
+      toast.success('Car deleted successfully!');
+      window.location.reload(); // or call parent callback to update UI
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error('Failed to delete the car.');
+    }
+  };
+
   return (
-    <div className="bg-white relative rounded-lg overflow-hidden shadow-md border border-[#E5E5E5] transition-transform hover:scale-105 w-full max-w-sm mx-auto">
+    <div className="bg-white relative rounded-lg overflow-hidden shadow-md border border-[#E5E5E5] transition-transform  w-full max-w-sm mx-auto">
       {/* Heart icon */}
       {user && (
         <button
@@ -85,12 +101,21 @@ const CarCard = ({ name, brand, minprice, maxprice, image, _id, listedby }) => {
           </button>
 
           {user?.userId === listedby && (
-            <button
-              className="w-1/3 bg-[#FCA311] text-black font-semibold py-2 rounded hover:bg-[#e59400] transition-colors"
-              onClick={() => navigate(`/edit/${_id}`)}
-            >
-              Edit
-            </button>
+            <>
+              <button
+                className="w-1/3 bg-[#FCA311] text-black font-semibold py-2 rounded hover:bg-[#e59400] transition-colors"
+                onClick={() => navigate(`/edit/${_id}`)}
+              >
+                Edit
+              </button>
+              <button
+                className="w-1/3 text-red-500 font-semibold py-2 rounded hover:text-red-800"
+                onClick={handleDelete}
+                title="Delete Listing"
+              >
+                <FaTrash />
+              </button>
+            </>
           )}
         </div>
       </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import carImage from '../assets/image.png';
 import HomeCard from '../components/HomeCard';
+import BrandsCard from '../components/brandsCard';
 
 const Home = () => {
   return (
@@ -27,7 +28,7 @@ const Home = () => {
   <div className="max-w-7xl mx-auto">
     
     {/* Heading */}
-    <h2 className="text-center text-3xl md:text-4xl font-bold text-[var(--color-yellow)] mb-8 mt-12">
+    <h2 className="text-center text-3xl md:text-4xl font-bold text-black mb-8 mt-12">
       Why Choose Us
     </h2>
 
@@ -49,8 +50,12 @@ const Home = () => {
         text="Explore exclusive offers and limited-time discounts."
       />
     </div>
+
+
   </div>
 </div>
+
+    <BrandsCard/>
 
 
     </>

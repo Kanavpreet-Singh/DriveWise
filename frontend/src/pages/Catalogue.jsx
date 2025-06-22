@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import CarCard from '../components/CarCard';
 import { FaPlus } from 'react-icons/fa';
+
 const Catalogue = () => {
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [cars, setCars] = useState([]);
@@ -29,8 +32,24 @@ const Catalogue = () => {
   };
 
   useEffect(() => {
+    
     fetchCars();
   }, []);
+
+  useEffect(() => {
+  const brandFromURL = searchParams.get("brand");
+
+  if (brandFromURL) {
+    setFilters((prev) => ({ ...prev, brand: brandFromURL }));
+    setFiltersApplied(true);
+  }
+}, [searchParams]);
+
+useEffect(() => {
+  if (filters.brand) {
+    handleApplyFilters();
+  }
+}, [filters.brand]);
 
   const handleApplyFilters = async () => {
     try {

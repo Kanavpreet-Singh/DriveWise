@@ -4,13 +4,50 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 
+const cityList = [
+  { name: 'Delhi', coordinates: [77.1025, 28.7041] },
+  { name: 'Mumbai', coordinates: [72.8777, 19.076] },
+  { name: 'Bangalore', coordinates: [77.5946, 12.9716] },
+  { name: 'Hyderabad', coordinates: [78.4867, 17.385] },
+  { name: 'Ahmedabad', coordinates: [72.5714, 23.0225] },
+  { name: 'Chennai', coordinates: [80.2707, 13.0827] },
+  { name: 'Kolkata', coordinates: [88.3639, 22.5726] },
+  { name: 'Pune', coordinates: [73.8567, 18.5204] },
+  { name: 'Jaipur', coordinates: [75.7873, 26.9124] },
+  { name: 'Chandigarh', coordinates: [76.7794, 30.7333] },
+  { name: 'Mohali', coordinates: [76.7081, 30.7046] },
+  { name: 'Noida', coordinates: [77.391, 28.5355] },
+  { name: 'Lucknow', coordinates: [80.9462, 26.8467] },
+  { name: 'Indore', coordinates: [75.8577, 22.7196] },
+  { name: 'Nagpur', coordinates: [79.0882, 21.1458] },
+  { name: 'Bhopal', coordinates: [77.4126, 23.2599] },
+  { name: 'Surat', coordinates: [72.8311, 21.1702] },
+  { name: 'Patna', coordinates: [85.1376, 25.5941] },
+  { name: 'Gurgaon', coordinates: [77.0266, 28.4595] },
+  { name: 'Amritsar', coordinates: [74.8723, 31.634] },
+];
+
 const CarDetails = () => {
   const { carId } = useParams();
   const [car, setCar] = useState(null);
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [city, setCity] = useState('');
   const { user } = useAuth();
   const commentRef = useRef();
+
+  useEffect(() => {
+    fetchCar();
+    fetchComments();
+  }, [carId]);
+
+  useEffect(() => {
+    if (car?.location?.coordinates?.length === 2) {
+      const [lng, lat] = car.location.coordinates;
+      const nearest = getNearestCity(lat, lng);
+      setCity(nearest);
+    }
+  }, [car]);
 
   const fetchCar = async () => {
     try {
@@ -33,11 +70,6 @@ const CarDetails = () => {
     }
   };
 
-  useEffect(() => {
-    fetchCar();
-    fetchComments();
-  }, [carId]);
-
   const handleCommentSubmit = async () => {
     const comment = commentRef.current.value.trim();
     if (!comment) {
@@ -59,13 +91,35 @@ const CarDetails = () => {
 
       commentRef.current.value = '';
       toast.success('Comment submitted successfully!');
-      fetchComments(); // ✅ refresh comments
+      fetchComments();
     } catch (error) {
       console.error('Error submitting comment:', error);
       toast.error('Failed to submit comment. Please try again.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const formatPrice = (num) => {
+    if (num >= 1e7) return `₹${(num / 1e7).toFixed(2)} Cr`;
+    if (num >= 1e5) return `₹${(num / 1e5).toFixed(2)} Lakh`;
+    return `₹${num.toLocaleString()}`;
+  };
+
+  const getNearestCity = (lat, lon) => {
+    let minDist = Infinity;
+    let nearestCity = 'Unknown';
+
+    for (let city of cityList) {
+      const [clon, clat] = city.coordinates;
+      const dist = Math.sqrt(Math.pow(lat - clat, 2) + Math.pow(lon - clon, 2));
+      if (dist < minDist) {
+        minDist = dist;
+        nearestCity = city.name;
+      }
+    }
+
+    return nearestCity;
   };
 
   if (!car) return <p>Loading car details...</p>;
@@ -87,8 +141,13 @@ const CarDetails = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left mb-6">
             <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="font-semibold text-gray-700">Price Range:</p>
-              <p className="text-lg font-bold text-yellow">₹{car.minprice} - ₹{car.maxprice} Lakh</p>
+              <p className="font-semibold text-gray-700">Minimum Price:</p>
+              <p className="text-lg font-bold text-yellow">{formatPrice(car.minprice)}</p>
+            </div>
+
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="font-semibold text-gray-700">Maximum Price:</p>
+              <p className="text-lg font-bold text-yellow">{formatPrice(car.maxprice)}</p>
             </div>
 
             <div className="bg-gray-50 p-4 rounded-lg">
@@ -114,6 +173,11 @@ const CarDetails = () => {
             <div className="bg-gray-50 p-4 rounded-lg">
               <p className="font-semibold text-gray-700">Vehicle Category:</p>
               <p className="text-gray-800">{car.category}</p>
+            </div>
+
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="font-semibold text-gray-700">City:</p>
+              <p className="text-gray-800">{city}</p>
             </div>
           </div>
 
@@ -141,36 +205,35 @@ const CarDetails = () => {
           )}
 
           <div className="mt-10 text-left">
-  <h3 className="text-xl font-semibold text-[#14213D] mb-4">Comments</h3>
-
-  {comments.length === 0 ? (
-    <p className="text-gray-500">No comments yet.</p>
-  ) : (
-    <div className="space-y-4">
-      {comments.map((comment, index) => (
-        <div
-          key={index}
-          className="flex items-start bg-gray-100 p-4 rounded-lg shadow-sm"
-        >
-          <img
-            src={
-              comment.user?.profilePic ||
-              "https://res.cloudinary.com/decprn8rm/image/upload/v1750436169/Screenshot_2025-06-20_214548_lwtrzl.png"
-            }
-            alt="User profile"
-            className="w-10 h-10 rounded-full mr-4 object-cover border border-gray-300"
-          />
-          <div>
-            <p className="text-sm font-semibold text-gray-800 mb-1">
-              {comment.user?.username || "Anonymous"}
-            </p>
-            <p className="text-gray-700 text-sm">{comment.text}</p>
+            <h3 className="text-xl font-semibold text-[#14213D] mb-4">Comments</h3>
+            {comments.length === 0 ? (
+              <p className="text-gray-500">No comments yet.</p>
+            ) : (
+              <div className="space-y-4">
+                {comments.map((comment, index) => (
+                  <div
+                    key={index}
+                    className="flex items-start bg-gray-100 p-4 rounded-lg shadow-sm"
+                  >
+                    <img
+                      src={
+                        comment.user?.profilePic ||
+                        "https://res.cloudinary.com/decprn8rm/image/upload/v1750436169/Screenshot_2025-06-20_214548_lwtrzl.png"
+                      }
+                      alt="User profile"
+                      className="w-10 h-10 rounded-full mr-4 object-cover border border-gray-300"
+                    />
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800 mb-1">
+                        {comment.user?.username || "Anonymous"}
+                      </p>
+                      <p className="text-gray-700 text-sm">{comment.text}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        </div>
-      ))}
-    </div>
-  )}
-</div>
 
         </div>
       </div>

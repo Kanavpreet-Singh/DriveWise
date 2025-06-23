@@ -35,9 +35,22 @@ const carSchema=new Schema({
     type:Schema.Types.ObjectId,
     ref:'User',
     required:true
-  } 
+  } ,
+  location: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      required: true
+    },
+    coordinates: {
+      type: [Number], 
+      required: true
+    }
+  }
 
 });
+
+carSchema.index({ location: '2dsphere' });
 
 const Car=model('Car',carSchema);
 module.exports = Car;

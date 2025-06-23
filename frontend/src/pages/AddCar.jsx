@@ -4,6 +4,29 @@ import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
+const cityList = [
+  { name: 'Delhi', coordinates: [77.1025, 28.7041] },
+  { name: 'Mumbai', coordinates: [72.8777, 19.0760] },
+  { name: 'Bangalore', coordinates: [77.5946, 12.9716] },
+  { name: 'Hyderabad', coordinates: [78.4867, 17.3850] },
+  { name: 'Ahmedabad', coordinates: [72.5714, 23.0225] },
+  { name: 'Chennai', coordinates: [80.2707, 13.0827] },
+  { name: 'Kolkata', coordinates: [88.3639, 22.5726] },
+  { name: 'Pune', coordinates: [73.8567, 18.5204] },
+  { name: 'Jaipur', coordinates: [75.7873, 26.9124] },
+  { name: 'Chandigarh', coordinates: [76.7794, 30.7333] },
+  { name: 'Mohali', coordinates: [76.7081, 30.7046] },
+  { name: 'Noida', coordinates: [77.3910, 28.5355] },
+  { name: 'Lucknow', coordinates: [80.9462, 26.8467] },
+  { name: 'Indore', coordinates: [75.8577, 22.7196] },
+  { name: 'Nagpur', coordinates: [79.0882, 21.1458] },
+  { name: 'Bhopal', coordinates: [77.4126, 23.2599] },
+  { name: 'Surat', coordinates: [72.8311, 21.1702] },
+  { name: 'Patna', coordinates: [85.1376, 25.5941] },
+  { name: 'Gurgaon', coordinates: [77.0266, 28.4595] },
+  { name: 'Amritsar', coordinates: [74.8723, 31.6340] },
+];
+
 const AddCar = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -23,7 +46,14 @@ const AddCar = () => {
     year: '',
     seats: '',
     image: '',
+    location: {
+      city: '',
+      coordinates: []
+    }
   });
+
+  const [cityInput, setCityInput] = useState('');
+  const [citySuggestions, setCitySuggestions] = useState([]);
 
   const backend_url = import.meta.env.VITE_BACKEND_URL;
 
@@ -75,6 +105,12 @@ const AddCar = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    const coords = formData.location.coordinates;
+    if (!coords.length) {
+      toast.error('Please select a valid city from the dropdown');
+      return;
+    }
+
     try {
       let imageUrl = formData.image;
 
@@ -84,8 +120,17 @@ const AddCar = () => {
 
       const token = localStorage.getItem('token');
       const res = await axios.post(`${backend_url}/car/add`,
-        { ...formData, image: imageUrl },
-        { headers: { token } });
+        {
+          ...formData,
+          image: imageUrl,
+          location: {
+            type: 'Point',
+            coordinates: coords
+          }
+        },
+        {
+          headers: { token }
+        });
 
       toast.success(res.data.message);
 
@@ -100,11 +145,13 @@ const AddCar = () => {
         year: '',
         seats: '',
         image: '',
+        location: { city: '', coordinates: [] }
       });
+      setCityInput('');
       setImageFile(null);
       navigate('/catalogue');
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Something went wrong');
+      toast.error(error.message || 'Something went wrong');
       setUploading(false);
     }
   };
@@ -141,7 +188,50 @@ const AddCar = () => {
         <input name="year" type="number" placeholder="Year" required className="w-full border px-3 py-2" value={formData.year} onChange={handleChange} />
         <input name="seats" type="number" placeholder="Seats" className="w-full border px-3 py-2" value={formData.seats} onChange={handleChange} />
 
-        {/* Image Source Selector */}
+        
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="City (e.g. Mohali)"
+            className="w-full border px-3 py-2"
+            value={cityInput}
+            onChange={(e) => {
+              const value = e.target.value;
+              setCityInput(value);
+              const filtered = cityList.filter(city =>
+                city.name.toLowerCase().startsWith(value.toLowerCase())
+              );
+              setCitySuggestions(filtered);
+            }}
+            required
+          />
+
+          {citySuggestions.length > 0 && (
+            <ul className="absolute bg-white border w-full z-10 max-h-40 overflow-y-auto shadow">
+              {citySuggestions.map((city) => (
+                <li
+                  key={city.name}
+                  onClick={() => {
+                    setFormData(prev => ({
+                      ...prev,
+                      location: {
+                        city: city.name,
+                        coordinates: city.coordinates
+                      }
+                    }));
+                    setCityInput(city.name);
+                    setCitySuggestions([]);
+                  }}
+                  className="px-3 py-2 cursor-pointer hover:bg-gray-100"
+                >
+                  {city.name}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        
         <div className="space-y-2">
           <label className="block font-semibold text-gray-700">Image Source</label>
           <select

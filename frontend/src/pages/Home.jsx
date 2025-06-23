@@ -2,6 +2,7 @@ import React from 'react';
 import carImage from '../assets/image.png';
 import HomeCard from '../components/HomeCard';
 import BrandsCard from '../components/brandsCard';
+import NearbyFinder from '../components/NearbyFinder';
 
 const Home = () => {
   return (
@@ -56,6 +57,7 @@ const Home = () => {
 </div>
 
     <BrandsCard/>
+    <NearbyFinder/>
 
 
     </>

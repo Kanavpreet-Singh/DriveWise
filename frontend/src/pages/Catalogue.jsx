@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
 import CarCard from '../components/CarCard';
 import { FaPlus } from 'react-icons/fa';
 
@@ -19,8 +18,42 @@ const Catalogue = () => {
     category: '',
   });
   const [filtersApplied, setFiltersApplied] = useState(false);
-
+  const [showNearbyHeading, setShowNearbyHeading] = useState(false);
   const backend_url = import.meta.env.VITE_BACKEND_URL;
+
+  const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
+    const deg2rad = (deg) => deg * (Math.PI / 180);
+    const R = 6371;
+    const dLat = deg2rad(lat2 - lat1);
+    const dLon = deg2rad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(deg2rad(lat1)) *
+        Math.cos(deg2rad(lat2)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  const handleShowNearby = async () => {
+    try {
+      navigator.geolocation.getCurrentPosition(async (position) => {
+        const { latitude, longitude } = position.coords;
+        const res = await axios.get(`${backend_url}/car/allcars`);
+        const filtered = res.data.cars.filter((car) => {
+          const [carLng, carLat] = car.location?.coordinates || [];
+          const dist = getDistanceFromLatLonInKm(latitude, longitude, carLat, carLng);
+          return dist <= 50;
+        });
+        setCars(filtered);
+        setFiltersApplied(true);
+        setShowNearbyHeading(true);
+      });
+    } catch (err) {
+      console.error('Error fetching nearby cars:', err);
+    }
+  };
 
   const fetchCars = async () => {
     try {
@@ -32,24 +65,30 @@ const Catalogue = () => {
   };
 
   useEffect(() => {
-    
     fetchCars();
   }, []);
 
+  const brandFromURL = searchParams.get('brand');
+  const nearbyFlag = searchParams.get('nearby');
+
   useEffect(() => {
-  const brandFromURL = searchParams.get("brand");
+    if (brandFromURL) {
+      setFilters((prev) => ({ ...prev, brand: brandFromURL }));
+      setFiltersApplied(true);
+    }
+  }, [brandFromURL]);
 
-  if (brandFromURL) {
-    setFilters((prev) => ({ ...prev, brand: brandFromURL }));
-    setFiltersApplied(true);
-  }
-}, [searchParams]);
+  useEffect(() => {
+    if (filters.brand) {
+      handleApplyFilters();
+    }
+  }, [filters.brand]);
 
-useEffect(() => {
-  if (filters.brand) {
-    handleApplyFilters();
-  }
-}, [filters.brand]);
+  useEffect(() => {
+    if (nearbyFlag === 'true') {
+      handleShowNearby();
+    }
+  }, [nearbyFlag]);
 
   const handleApplyFilters = async () => {
     try {
@@ -80,6 +119,7 @@ useEffect(() => {
     });
     fetchCars();
     setFiltersApplied(false);
+    setShowNearbyHeading(false);
   };
 
   return (
@@ -93,134 +133,152 @@ useEffect(() => {
             <FaPlus className="text-sm" />
             Add Listing
           </button>
-
         </div>
       )}
 
-          {/* Filter Section */}
-    <div className="bg-white shadow-lg rounded-xl p-6 mb-8 border border-gray-200">
-      <h3 className="text-2xl font-bold text-[#14213D] mb-6">Filter Cars</h3>
+      
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Brand */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
-          <select
-            value={filters.brand}
-            onChange={(e) => setFilters({ ...filters, brand: e.target.value })}
-            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#FCA311] transition"
-          >
-            <option value="">Select Brand</option>
-            {['Toyota', 'Hyundai', 'Suzuki', 'Honda', 'Tata', 'Mahindra', 'Kia', 'BMW', 'Mercedes-Benz', 'Audi', 'Tesla', 'Volkswagen'].map((brand) => (
-              <option key={brand} value={brand}>{brand}</option>
-            ))}
-          </select>
+      <div className="bg-white shadow-lg rounded-xl p-6 mb-8 border border-gray-200">
+        <h3 className="text-2xl font-bold text-[#14213D] mb-6">Filter Cars</h3>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
+            <select
+              value={filters.brand}
+              onChange={(e) => setFilters({ ...filters, brand: e.target.value })}
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#FCA311] transition"
+            >
+              <option value="">Select Brand</option>
+              {['Toyota', 'Hyundai', 'Suzuki', 'Honda', 'Tata', 'Mahindra', 'Kia', 'BMW', 'Mercedes-Benz', 'Audi', 'Tesla', 'Volkswagen'].map((brand) => (
+                <option key={brand} value={brand}>{brand}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Fuel Type</label>
+            <select
+              value={filters.fuelType}
+              onChange={(e) => setFilters({ ...filters, fuelType: e.target.value })}
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#FCA311] transition"
+            >
+              <option value="">Select Fuel Type</option>
+              {['Petrol', 'Diesel', 'CNG', 'Electric', 'Hybrid'].map((type) => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Transmission</label>
+            <select
+              value={filters.transmission}
+              onChange={(e) => setFilters({ ...filters, transmission: e.target.value })}
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#FCA311] transition"
+            >
+              <option value="">Select Transmission</option>
+              {['Manual', 'Automatic'].map((trans) => (
+                <option key={trans} value={trans}>{trans}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Seats</label>
+            <select
+              value={filters.seats}
+              onChange={(e) => setFilters({ ...filters, seats: e.target.value })}
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#FCA311] transition"
+            >
+              <option value="">Select Seats</option>
+              {[2, 4, 5, 6, 7, 8].map((seat) => (
+                <option key={seat} value={seat}>{seat}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+            <select
+              value={filters.category}
+              onChange={(e) => setFilters({ ...filters, category: e.target.value })}
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#FCA311] transition"
+            >
+              <option value="">Select Category</option>
+              {['Hatchback', 'Sedan', 'SUV', 'Luxury', 'Super Luxury'].map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        {/* Fuel Type */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Fuel Type</label>
-          <select
-            value={filters.fuelType}
-            onChange={(e) => setFilters({ ...filters, fuelType: e.target.value })}
-            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#FCA311] transition"
-          >
-            <option value="">Select Fuel Type</option>
-            {['Petrol', 'Diesel', 'CNG', 'Electric', 'Hybrid'].map((type) => (
-              <option key={type} value={type}>{type}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Transmission */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Transmission</label>
-          <select
-            value={filters.transmission}
-            onChange={(e) => setFilters({ ...filters, transmission: e.target.value })}
-            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#FCA311] transition"
-          >
-            <option value="">Select Transmission</option>
-            {['Manual', 'Automatic'].map((trans) => (
-              <option key={trans} value={trans}>{trans}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Seats */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Seats</label>
-          <select
-            value={filters.seats}
-            onChange={(e) => setFilters({ ...filters, seats: e.target.value })}
-            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#FCA311] transition"
-          >
-            <option value="">Select Seats</option>
-            {[2, 4, 5, 6, 7, 8].map((seat) => (
-              <option key={seat} value={seat}>{seat}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Category */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-          <select
-            value={filters.category}
-            onChange={(e) => setFilters({ ...filters, category: e.target.value })}
-            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#FCA311] transition"
-          >
-            <option value="">Select Category</option>
-            {['Hatchback', 'Sedan', 'SUV', 'Luxury', 'Super Luxury'].map((cat) => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Buttons */}
-      <div className="mt-6 flex flex-wrap gap-4">
-        <button
-          onClick={handleApplyFilters}
-          className="border border-[#FCA311] text-[#FCA311] px-5 py-2 rounded-md font-medium transition duration-200 ease-in-out hover:bg-[#FCA311] hover:text-[#14213D]"
-        >
-          Apply Filters
-        </button>
-
-
-        {filtersApplied && (
+        <div className="mt-6 flex flex-wrap gap-4">
           <button
-            onClick={handleClearFilters}
-            className="text-[#FCA311] hover:underline text-sm font-medium"
+            onClick={handleApplyFilters}
+            className="border border-[#FCA311] text-[#FCA311] px-5 py-2 rounded-md font-medium transition duration-200 ease-in-out hover:bg-[#FCA311] hover:text-[#14213D]"
           >
-            Clear All Filters
+            Apply Filters
           </button>
-        )}
+
+          {filtersApplied && (
+            <button
+              onClick={handleClearFilters}
+              className="text-[#FCA311] hover:underline text-sm font-medium"
+            >
+              Clear All Filters
+            </button>
+          )}
+        </div>
       </div>
-    </div>
 
-      {/* Cars Grid */}
+      {showNearbyHeading && (
+        <h2 className="text-lg sm:text-xl font-semibold text-[#14213D] mb-6 flex items-center gap-2">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-5 w-5 text-[#FCA311]"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 11c.828 0 1.5-.672 1.5-1.5S12.828 8 12 8s-1.5.672-1.5 1.5S11.172 11 12 11z"
+            />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M19.5 11c0 4.687-7.5 10-7.5 10S4.5 15.687 4.5 11a7.5 7.5 0 0115 0z"
+            />
+          </svg>
+          Showing results <span className="text-[#FCA311]">near you</span>
+        </h2>
+      )}
+
+
+
       {cars.length === 0 ? (
-  <div className="text-center text-gray-500 text-lg py-12">
-    No cars found for the selected filters.
-  </div>
-) : (
-  <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-    {cars.map((car) => (
-      <CarCard
-        key={car._id}
-        name={car.name}
-        brand={car.brand}
-        minprice={car.minprice}
-        maxprice={car.maxprice}
-        image={car.image}
-        _id={car._id}
-        listedby={car.listedby}
-      />
-    ))}
-  </div>
-)}
-
+        <div className="text-center text-gray-500 text-lg py-12">
+          No cars found for the selected filters.
+        </div>
+      ) : (
+        <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          {cars.map((car) => (
+            <CarCard
+              key={car._id}
+              name={car.name}
+              brand={car.brand}
+              minprice={car.minprice}
+              maxprice={car.maxprice}
+              image={car.image}
+              _id={car._id}
+              listedby={car.listedby}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };

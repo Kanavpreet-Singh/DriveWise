@@ -22,7 +22,6 @@ router.get('/allcars', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
-
 router.post('/add', userAuth, async (req, res) => {
   const {
     name,
@@ -34,11 +33,11 @@ router.post('/add', userAuth, async (req, res) => {
     transmission,
     year,
     seats,
-    image, 
+    image,
+    location 
   } = req.body;
 
- 
-  if (!name || !brand || !minprice || !maxprice || !category || !image) {
+  if (!name || !brand || !minprice || !maxprice || !category || !image || !location) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
 
@@ -56,6 +55,10 @@ router.post('/add', userAuth, async (req, res) => {
       image,
       colorOptions: ['white', 'black'],
       listedby: req.user.userId,
+      location: {
+        type: 'Point',
+        coordinates: location.coordinates  
+      }
     });
 
     await newCar.save();

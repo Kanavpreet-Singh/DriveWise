@@ -56,13 +56,28 @@ const Catalogue = () => {
   };
 
   const fetchCars = async () => {
-    try {
-      const res = await axios.get(`${backend_url}/car/allcars`);
-      setCars(res.data.cars);
-    } catch (err) {
-      console.error('Error fetching cars:', err);
-    }
-  };
+  try {
+    const res = await axios.get(`${backend_url}/car/allcars`);
+    let allCars = res.data.cars;
+
+    const minprice = parseFloat(searchParams.get('minprice'));
+    const maxprice = parseFloat(searchParams.get('maxprice'));
+
+    if (!isNaN(minprice) && !isNaN(maxprice)) {
+  allCars = allCars.filter(
+    (car) =>
+      Number(car.maxprice) >= minprice && Number(car.minprice) <= maxprice
+  );
+  setFiltersApplied(true);
+}
+
+
+    setCars(allCars);
+  } catch (err) {
+    console.error('Error fetching cars:', err);
+  }
+};
+
 
   useEffect(() => {
     fetchCars();

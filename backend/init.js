@@ -2,29 +2,159 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 const Car = require('./models/Car');
 
-// 20 fixed Indian cities with coordinates
-const cityList = [
-  { name: 'Delhi', coordinates: [77.1025, 28.7041] },
-  { name: 'Mumbai', coordinates: [72.8777, 19.0760] },
-  { name: 'Bangalore', coordinates: [77.5946, 12.9716] },
-  { name: 'Hyderabad', coordinates: [78.4867, 17.3850] },
-  { name: 'Ahmedabad', coordinates: [72.5714, 23.0225] },
-  { name: 'Chennai', coordinates: [80.2707, 13.0827] },
-  { name: 'Kolkata', coordinates: [88.3639, 22.5726] },
-  { name: 'Pune', coordinates: [73.8567, 18.5204] },
-  { name: 'Jaipur', coordinates: [75.7873, 26.9124] },
-  { name: 'Chandigarh', coordinates: [76.7794, 30.7333] },
-  { name: 'Mohali', coordinates: [76.7081, 30.7046] },
-  { name: 'Noida', coordinates: [77.3910, 28.5355] },
-  { name: 'Lucknow', coordinates: [80.9462, 26.8467] },
-  { name: 'Indore', coordinates: [75.8577, 22.7196] },
-  { name: 'Nagpur', coordinates: [79.0882, 21.1458] },
-  { name: 'Bhopal', coordinates: [77.4126, 23.2599] },
-  { name: 'Surat', coordinates: [72.8311, 21.1702] },
-  { name: 'Patna', coordinates: [85.1376, 25.5941] },
-  { name: 'Gurgaon', coordinates: [77.0266, 28.4595] },
-  { name: 'Amritsar', coordinates: [74.8723, 31.6340] },
+const demoCars = [
+  {
+    name: "Honda Elevate",
+    brand: "Honda",
+    minprice: 1100000,
+    maxprice: 1600000,
+    category: "SUV",
+    fuelType: "Petrol",
+    transmission: "Manual",
+    year: 2023,
+    seats: 5,
+    colorOptions: ["Blue", "White", "Silver"],
+    image: "https://res.cloudinary.com/decprn8rm/image/upload/v1750871961/elevate_qycotb.jpg",
+    listedby: new mongoose.Types.ObjectId(),
+    location: { type: "Point", coordinates: [77.1025, 28.7041] } // Delhi
+  },
+  {
+    name: "Hyundai Verna",
+    brand: "Hyundai",
+    minprice: 1000000,
+    maxprice: 1700000,
+    category: "Sedan",
+    fuelType: "Petrol",
+    transmission: "Automatic",
+    year: 2023,
+    seats: 5,
+    colorOptions: ["Black", "Red", "White"],
+    image: "https://res.cloudinary.com/decprn8rm/image/upload/v1750872006/download_mcljlt.jpg",
+    listedby: new mongoose.Types.ObjectId(),
+    location: { type: "Point", coordinates: [72.5714, 23.0225] } // Ahmedabad
+  },
+  {
+    name: "Tata Punch EV",
+    brand: "Tata",
+    minprice: 1000000,
+    maxprice: 1200000,
+    category: "Hatchback",
+    fuelType: "Electric",
+    transmission: "Automatic",
+    year: 2024,
+    seats: 5,
+    colorOptions: ["Blue", "Grey"],
+    image: "https://res.cloudinary.com/decprn8rm/image/upload/v1750872049/download_qsukzx.jpg",
+    listedby: new mongoose.Types.ObjectId(),
+    location: { type: "Point", coordinates: [76.7081, 30.7046] } // Mohali
+  },
+  {
+    name: "Kia Seltos HTX",
+    brand: "Kia",
+    minprice: 1500000,
+    maxprice: 2000000,
+    category: "SUV",
+    fuelType: "Diesel",
+    transmission: "Manual",
+    year: 2022,
+    seats: 5,
+    colorOptions: ["Orange", "White", "Silver"],
+    image: "https://res.cloudinary.com/decprn8rm/image/upload/v1750872172/download_gvrecc.jpg",
+    listedby: new mongoose.Types.ObjectId(),
+    location: { type: "Point", coordinates: [78.4867, 17.385] } // Hyderabad
+  },
+  {
+    name: "Volkswagen Virtus",
+    brand: "Volkswagen",
+    minprice: 1200000,
+    maxprice: 1700000,
+    category: "Sedan",
+    fuelType: "Petrol",
+    transmission: "Automatic",
+    year: 2023,
+    seats: 5,
+    colorOptions: ["Red", "Grey"],
+    image: "https://res.cloudinary.com/decprn8rm/image/upload/v1750872207/download_tvyvlq.jpg",
+    listedby: new mongoose.Types.ObjectId(),
+    location: { type: "Point", coordinates: [75.7873, 26.9124] } // Jaipur
+  },
+  {
+    name: "Mercedes-Benz A-Class",
+    brand: "Mercedes-Benz",
+    minprice: 4500000,
+    maxprice: 5200000,
+    category: "Luxury",
+    fuelType: "Petrol",
+    transmission: "Automatic",
+    year: 2023,
+    seats: 5,
+    colorOptions: ["White", "Black"],
+    image: "https://res.cloudinary.com/decprn8rm/image/upload/v1750872376/download_xki5m2.jpg",
+    listedby: new mongoose.Types.ObjectId(),
+    location: { type: "Point", coordinates: [85.1376, 25.5941] } // Patna
+  },
+  {
+    name: "Toyota Hyryder",
+    brand: "Toyota",
+    minprice: 1400000,
+    maxprice: 1900000,
+    category: "SUV",
+    fuelType: "Hybrid",
+    transmission: "Automatic",
+    year: 2023,
+    seats: 5,
+    colorOptions: ["Grey", "Red", "Green"],
+    image: "https://res.cloudinary.com/decprn8rm/image/upload/v1750872344/download_uilsf3.jpg",
+    listedby: new mongoose.Types.ObjectId(),
+    location: { type: "Point", coordinates: [73.8567, 18.5204] } // Pune
+  },
+  {
+    name: "BMW 2 Series",
+    brand: "BMW",
+    minprice: 4200000,
+    maxprice: 4700000,
+    category: "Luxury",
+    fuelType: "Diesel",
+    transmission: "Automatic",
+    year: 2024,
+    seats: 5,
+    colorOptions: ["White", "Navy Blue"],
+    image: "https://res.cloudinary.com/decprn8rm/image/upload/v1750872313/download_wyiiqu.jpg",
+    listedby: new mongoose.Types.ObjectId(),
+    location: { type: "Point", coordinates: [80.9462, 26.8467] } // Lucknow
+  },
+  {
+    name: "Audi A4",
+    brand: "Audi",
+    minprice: 4500000,
+    maxprice: 5000000,
+    category: "Luxury",
+    fuelType: "Petrol",
+    transmission: "Automatic",
+    year: 2023,
+    seats: 5,
+    colorOptions: ["Silver", "Black"],
+    image: "https://res.cloudinary.com/decprn8rm/image/upload/v1750872285/download_u3kxlw.jpg",
+    listedby: new mongoose.Types.ObjectId(),
+    location: { type: "Point", coordinates: [76.7794, 30.7333] } // Chandigarh
+  },
+  {
+    name: "Mahindra Thar LX",
+    brand: "Mahindra",
+    minprice: 1300000,
+    maxprice: 1650000,
+    category: "SUV",
+    fuelType: "Diesel",
+    transmission: "Manual",
+    year: 2022,
+    seats: 4,
+    colorOptions: ["Red", "Black"],
+    image: "https://res.cloudinary.com/decprn8rm/image/upload/v1750872251/download_vcl6w5.jpg",
+    listedby: new mongoose.Types.ObjectId(),
+    location: { type: "Point", coordinates: [74.8723, 31.634] } // Amritsar
+  }
 ];
+
 
 // Connect to DB
 mongoose.connect("mongodb://localhost:27017/drivecircle", {
@@ -34,32 +164,16 @@ mongoose.connect("mongodb://localhost:27017/drivecircle", {
 .then(() => console.log('✅ MongoDB connected'))
 .catch((err) => console.error('❌ MongoDB connection error:', err));
 
-// Assign random city and coordinates from cityList
-async function assignRandomLocations() {
-  const cars = await Car.find({});
-  let updatedCount = 0;
-
-  for (const car of cars) {
-    if (car.location?.coordinates?.length === 2) {
-      console.log(`Skipping "${car.name}" — already has location`);
-      continue;
-    }
-
-    const randomCity = cityList[Math.floor(Math.random() * cityList.length)];
-
-    car.location = {
-      type: 'Point',
-      city: randomCity.name,
-      coordinates: randomCity.coordinates
-    };
-
-    await car.save();
-    console.log(`✅ Updated "${car.name}" with city "${randomCity.name}"`);
-    updatedCount++;
+async function insertDemoCars() {
+  try {
+    await Car.insertMany(demoCars);
+    console.log('✅ Demo cars inserted successfully!');
+  } catch (err) {
+    console.error('❌ Error inserting demo cars:', err);
+  } finally {
+    mongoose.connection.close();
   }
-
-  console.log(`\n🎉 Done. ${updatedCount} car(s) updated.`);
-  mongoose.disconnect();
 }
 
-assignRandomLocations();
+// Run the function
+insertDemoCars();

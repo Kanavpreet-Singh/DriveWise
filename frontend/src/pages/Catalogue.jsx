@@ -60,15 +60,16 @@ const Catalogue = () => {
     const res = await axios.get(`${backend_url}/car/allcars`);
     let allCars = res.data.cars;
 
-    const minprice = parseFloat(searchParams.get('minprice'));
-    const maxprice = parseFloat(searchParams.get('maxprice'));
+    const min = parseFloat(searchParams.get('min'));
+const max = parseFloat(searchParams.get('max'));
 
-    if (!isNaN(minprice) && !isNaN(maxprice)) {
+if (!isNaN(min) && !isNaN(max)) {
   allCars = allCars.filter(
-    (car) =>
-      Number(car.maxprice) >= minprice && Number(car.minprice) <= maxprice
+    (car) => Number(car.price) >= min && Number(car.price) <= max
   );
   setFiltersApplied(true);
+
+
 }
 
 
@@ -285,8 +286,8 @@ const Catalogue = () => {
               key={car._id}
               name={car.name}
               brand={car.brand}
-              minprice={car.minprice}
-              maxprice={car.maxprice}
+              price={car.price}
+              
               image={car.image}
               _id={car._id}
               listedby={car.listedby}

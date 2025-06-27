@@ -8,8 +8,8 @@ const carSchema=new Schema({
     'Kia', 'BMW', 'Mercedes-Benz', 'Audi', 'Tesla', 'Volkswagen'
   ], required: true },
     
-    minprice: { type: Number, required: true },
-    maxprice: { type: Number, required: true },
+    
+    price: { type: Number, required: true },
     category: { 
     type: String, 
     enum: ['Hatchback', 'Sedan', 'SUV', 'Luxury', 'Super Luxury'], 
@@ -29,7 +29,10 @@ const carSchema=new Schema({
   seats: { type: Number },
   colorOptions: [String],
 
-  image: String,
+  image: {
+  type: [String], 
+  required: true,
+},
 
   listedby:{
     type:Schema.Types.ObjectId,

@@ -35,6 +35,7 @@ const CarDetails = () => {
   const [city, setCity] = useState('');
   const { user } = useAuth();
   const commentRef = useRef();
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
     fetchCar();
@@ -80,15 +81,11 @@ const CarDetails = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-
       await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/car/comment/${carId}`,
         { comment },
-        {
-          headers: { token }
-        }
+        { headers: { token } }
       );
-
       commentRef.current.value = '';
       toast.success('Comment submitted successfully!');
       fetchComments();
@@ -109,7 +106,6 @@ const CarDetails = () => {
   const getNearestCity = (lat, lon) => {
     let minDist = Infinity;
     let nearestCity = 'Unknown';
-
     for (let city of cityList) {
       const [clon, clat] = city.coordinates;
       const dist = Math.sqrt(Math.pow(lat - clat, 2) + Math.pow(lon - clon, 2));
@@ -118,7 +114,6 @@ const CarDetails = () => {
         nearestCity = city.name;
       }
     }
-
     return nearestCity;
   };
 
@@ -131,50 +126,62 @@ const CarDetails = () => {
           <h1 className="text-3xl font-bold text-gray-800 mb-2">{car.name}</h1>
           <p className="text-lg text-yellow mb-6">{car.brand}</p>
 
-          <div className="flex justify-center mb-6">
-            <img
-              src={car.image}
-              className="w-full max-w-md rounded-lg shadow-sm border border-gray-200"
-              alt={car.name}
-            />
+          <div className="flex justify-center mb-6 relative">
+            {car.image && car.image.length > 0 && (
+              <img
+                src={car.image[currentImageIndex]}
+                className="w-full max-w-md rounded-lg shadow-sm border border-gray-200"
+                alt={car.name}
+              />
+            )}
+
+            {car.image?.length > 1 && (
+              <>
+                <button
+                  onClick={() =>
+                    setCurrentImageIndex((prev) => (prev - 1 + car.image.length) % car.image.length)
+                  }
+                  className="absolute top-1/2 left-0 transform -translate-y-1/2 px-3 py-2 bg-white bg-opacity-70 hover:bg-opacity-90 text-xl font-bold rounded-r shadow"
+                >
+                  ‹
+                </button>
+                <button
+                  onClick={() =>
+                    setCurrentImageIndex((prev) => (prev + 1) % car.image.length)
+                  }
+                  className="absolute top-1/2 right-0 transform -translate-y-1/2 px-3 py-2 bg-white bg-opacity-70 hover:bg-opacity-90 text-xl font-bold rounded-l shadow"
+                >
+                  ›
+                </button>
+              </>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left mb-6">
             <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="font-semibold text-gray-700">Minimum Price:</p>
-              <p className="text-lg font-bold text-yellow">{formatPrice(car.minprice)}</p>
+              <p className="font-semibold text-gray-700">Price:</p>
+              <p className="text-lg font-bold text-yellow">{formatPrice(car.price)}</p>
             </div>
-
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="font-semibold text-gray-700">Maximum Price:</p>
-              <p className="text-lg font-bold text-yellow">{formatPrice(car.maxprice)}</p>
-            </div>
-
             <div className="bg-gray-50 p-4 rounded-lg">
               <p className="font-semibold text-gray-700">Fuel Type:</p>
               <p className="text-gray-800">{car.fuelType}</p>
             </div>
-
             <div className="bg-gray-50 p-4 rounded-lg">
               <p className="font-semibold text-gray-700">Transmission:</p>
               <p className="text-gray-800">{car.transmission}</p>
             </div>
-
             <div className="bg-gray-50 p-4 rounded-lg">
               <p className="font-semibold text-gray-700">Seating Capacity:</p>
               <p className="text-gray-800">{car.seats} seats</p>
             </div>
-
             <div className="bg-gray-50 p-4 rounded-lg">
               <p className="font-semibold text-gray-700">Manufacturing Year:</p>
               <p className="text-gray-800">{car.year}</p>
             </div>
-
             <div className="bg-gray-50 p-4 rounded-lg">
               <p className="font-semibold text-gray-700">Vehicle Category:</p>
               <p className="text-gray-800">{car.category}</p>
             </div>
-
             <div className="bg-gray-50 p-4 rounded-lg">
               <p className="font-semibold text-gray-700">City:</p>
               <p className="text-gray-800">{city}</p>
@@ -234,7 +241,6 @@ const CarDetails = () => {
               </div>
             )}
           </div>
-
         </div>
       </div>
     </div>

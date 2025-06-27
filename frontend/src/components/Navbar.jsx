@@ -21,7 +21,7 @@ const Navbar = () => {
 
   const handleShowProfile = () => {
     setIsProfileOpen(false);
-    // You can implement your profile logic here
+    
     if(user.role=='dealer'){
       navigate(`/dealer`); 
     }
@@ -54,11 +54,13 @@ const Navbar = () => {
         <img className='h-12 w-28' src={Logo} alt="" />
       </div>
 
-      {/* Desktop menu */}
+      
       <div className="hidden md:flex space-x-6 mr-4 items-center">
-        <a href='/' className='hover:text-yellow hover:font-bold'>Home</a>
-        <a href='/catalogue' className='hover:text-yellow hover:font-bold'>Catalogue</a>
-        <a href='#' className='hover:text-yellow hover:font-bold'>Contact</a>
+        <a href='/' className='hover:underline'>Home</a>
+        <a href='/catalogue' className='hover:underline'>Catalogue</a>
+
+
+        
         {isLoggedIn ? (
           <div className="relative">
             <button 
@@ -94,17 +96,17 @@ const Navbar = () => {
         )}
       </div>
 
-      {/* Mobile menu button */}
+      
       <div className="md:hidden" onClick={() => setIsOpen(!isOpen)}>
         {hamburger}
       </div>
 
-      {/* Mobile menu */}
+      
       {isOpen && (
         <div className="absolute top-16 right-4 bg-white border border-gray shadow-md flex flex-col space-y-4 p-4 md:hidden z-10">
           <a href='/' className='hover:text-yellow'>Home</a>
           <a href='/catalogue' className='hover:text-yellow'>Catalogue</a>
-          <a href='#' className='hover:text-yellow'>Contact</a>
+          
           {isLoggedIn ? (
             <>
               <button 

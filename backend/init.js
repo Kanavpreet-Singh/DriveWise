@@ -6,7 +6,7 @@ const demoCars = [
   {
     name: "Honda Elevate",
     brand: "Honda",
-    minprice: 1100000,
+    price: 1100000,
     maxprice: 1600000,
     category: "SUV",
     fuelType: "Petrol",
@@ -21,7 +21,7 @@ const demoCars = [
   {
     name: "Hyundai Verna",
     brand: "Hyundai",
-    minprice: 1000000,
+    price: 1000000,
     maxprice: 1700000,
     category: "Sedan",
     fuelType: "Petrol",
@@ -36,7 +36,7 @@ const demoCars = [
   {
     name: "Tata Punch EV",
     brand: "Tata",
-    minprice: 1000000,
+    price: 1000000,
     maxprice: 1200000,
     category: "Hatchback",
     fuelType: "Electric",
@@ -51,7 +51,7 @@ const demoCars = [
   {
     name: "Kia Seltos HTX",
     brand: "Kia",
-    minprice: 1500000,
+    price: 1500000,
     maxprice: 2000000,
     category: "SUV",
     fuelType: "Diesel",
@@ -66,7 +66,7 @@ const demoCars = [
   {
     name: "Volkswagen Virtus",
     brand: "Volkswagen",
-    minprice: 1200000,
+    price: 1200000,
     maxprice: 1700000,
     category: "Sedan",
     fuelType: "Petrol",
@@ -81,7 +81,7 @@ const demoCars = [
   {
     name: "Mercedes-Benz A-Class",
     brand: "Mercedes-Benz",
-    minprice: 4500000,
+    price: 4500000,
     maxprice: 5200000,
     category: "Luxury",
     fuelType: "Petrol",
@@ -96,7 +96,7 @@ const demoCars = [
   {
     name: "Toyota Hyryder",
     brand: "Toyota",
-    minprice: 1400000,
+    price: 1400000,
     maxprice: 1900000,
     category: "SUV",
     fuelType: "Hybrid",
@@ -111,7 +111,7 @@ const demoCars = [
   {
     name: "BMW 2 Series",
     brand: "BMW",
-    minprice: 4200000,
+    price: 4200000,
     maxprice: 4700000,
     category: "Luxury",
     fuelType: "Diesel",
@@ -126,7 +126,7 @@ const demoCars = [
   {
     name: "Audi A4",
     brand: "Audi",
-    minprice: 4500000,
+    price: 4500000,
     maxprice: 5000000,
     category: "Luxury",
     fuelType: "Petrol",
@@ -141,8 +141,8 @@ const demoCars = [
   {
     name: "Mahindra Thar LX",
     brand: "Mahindra",
-    minprice: 1300000,
-    maxprice: 1650000,
+    price: 1300000,
+    price: 1650000,
     category: "SUV",
     fuelType: "Diesel",
     transmission: "Manual",

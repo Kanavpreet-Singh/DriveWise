@@ -7,20 +7,19 @@ import { useAuth } from '../context/AuthContext';
 const EditCar = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { id } = useParams(); 
+  const { id } = useParams();
   const backend_url = import.meta.env.VITE_BACKEND_URL;
 
   const [formData, setFormData] = useState({
     name: '',
     brand: '',
-    minprice: '',
-    maxprice: '',
+    price: '',
     category: '',
     fuelType: '',
     transmission: '',
     year: '',
     seats: '',
-    image: '',
+    images: [''], // image URLs
   });
 
   const brands = ['Toyota', 'Hyundai', 'Suzuki', 'Honda', 'Tata', 'Mahindra', 'Kia', 'BMW', 'Mercedes-Benz', 'Audi', 'Tesla', 'Volkswagen'];
@@ -42,7 +41,10 @@ const EditCar = () => {
           return;
         }
 
-        setFormData(res.data.car);
+        setFormData({
+          ...res.data.car,
+          images: Array.isArray(res.data.car.image) ? res.data.car.image : [res.data.car.image || ''],
+        });
       } catch (err) {
         toast.error('Failed to fetch car details');
         navigate('/');
@@ -65,12 +67,40 @@ const EditCar = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleImageChange = (index, value) => {
+    const updatedImages = [...formData.images];
+    updatedImages[index] = value;
+    setFormData((prev) => ({ ...prev, images: updatedImages }));
+  };
+
+  const addImageField = () => {
+    if (formData.images.length < 3) {
+      setFormData((prev) => ({ ...prev, images: [...prev.images, ''] }));
+    }
+  };
+
+  const removeImageField = (index) => {
+    if (formData.images.length > 2) {
+      const updatedImages = formData.images.filter((_, i) => i !== index);
+      setFormData((prev) => ({ ...prev, images: updatedImages }));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    const trimmedImages = formData.images.map(img => img.trim()).filter(img => img !== '');
+    if (trimmedImages.length < 2) {
+      toast.error('Please provide at least 2 valid image URLs.');
+      return;
+    }
+
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.post(`${backend_url}/car/${id}`, formData, {
+      const res = await axios.post(`${backend_url}/car/${id}`, {
+        ...formData,
+        image: trimmedImages,
+      }, {
         headers: { token },
       });
 
@@ -92,8 +122,7 @@ const EditCar = () => {
           {brands.map((brand) => <option key={brand} value={brand}>{brand}</option>)}
         </select>
 
-        <input name="minprice" type="number" placeholder="Minimum Price" required className="w-full border px-3 py-2" value={formData.minprice} onChange={handleChange} />
-        <input name="maxprice" type="number" placeholder="Maximum Price" required className="w-full border px-3 py-2" value={formData.maxprice} onChange={handleChange} />
+        <input name="price" type="number" placeholder="Price (₹)" required className="w-full border px-3 py-2" value={formData.price} onChange={handleChange} />
 
         <select name="category" required className="w-full border px-3 py-2" value={formData.category} onChange={handleChange}>
           <option value="">Select Category</option>
@@ -112,9 +141,41 @@ const EditCar = () => {
 
         <input name="year" type="number" placeholder="Year" required className="w-full border px-3 py-2" value={formData.year} onChange={handleChange} />
         <input name="seats" type="number" placeholder="Seats" className="w-full border px-3 py-2" value={formData.seats} onChange={handleChange} />
-        <input name="image" type="text" placeholder="Image URL" className="w-full border px-3 py-2" value={formData.image} onChange={handleChange} />
 
-        <button type="submit" className="bg-yellow text-white px-4 py-2 rounded shadow" style={{ boxShadow: '0 2px 6px var(--color-gray)' }}>
+        <div className="space-y-2">
+          <label className="block font-semibold text-gray-700">Image URLs (Min 2, Max 3):</label>
+          {formData.images.map((img, index) => (
+            <div key={index} className="flex gap-2 items-center">
+              <input
+                type="text"
+                placeholder={`Image ${index + 1}`}
+                value={img}
+                onChange={(e) => handleImageChange(index, e.target.value)}
+                className="w-full border px-3 py-2"
+              />
+              {formData.images.length > 2 && (
+                <button
+                  type="button"
+                  onClick={() => removeImageField(index)}
+                  className="text-red-600 font-bold text-xl"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          ))}
+          {formData.images.length < 3 && (
+            <button
+              type="button"
+              onClick={addImageField}
+              className="text-blue-600 font-semibold text-sm"
+            >
+              + Add Another Image
+            </button>
+          )}
+        </div>
+
+        <button type="submit" className="bg-yellow text-white px-4 py-2 rounded shadow">
           Update Car
         </button>
       </form>

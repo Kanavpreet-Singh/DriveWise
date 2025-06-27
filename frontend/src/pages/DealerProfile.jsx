@@ -57,14 +57,15 @@ const DealerProfile = () => {
               className="bg-white border border-[#E5E5E5] rounded-lg shadow-md overflow-hidden transition-transform hover:scale-105"
             >
               <img
-                src={car.image}
+                src={Array.isArray(car.image) ? car.image[0] : car.image}
                 alt={car.name}
                 className="w-full h-48 object-cover"
               />
               <div className="p-4 space-y-2">
                 <h3 className="text-lg font-semibold text-[#14213D]">{car.name}</h3>
                 <p className="text-sm text-[#14213D]">{car.brand}</p>
-                <p className="text-sm text-[#14213D]">₹{car.minprice} - ₹{car.maxprice} Lakh</p>
+               <p className="text-sm text-[#14213D]">₹{(car.price / 100000).toFixed(2)} Lakh</p>
+
                 <p className="text-xs text-gray-600">
                   {car.fuelType} | {car.transmission} | {car.year} | {car.seats} seats
                 </p>

@@ -5,7 +5,7 @@ import { FaHeart, FaRegHeart, FaTrash } from 'react-icons/fa';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
-const CarCard = ({ name, brand, minprice, maxprice, image, _id, listedby }) => {
+const CarCard = ({ name, brand, price, image, _id, listedby }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const backend_url = import.meta.env.VITE_BACKEND_URL;
@@ -73,24 +73,21 @@ const CarCard = ({ name, brand, minprice, maxprice, image, _id, listedby }) => {
       toast.error('Failed to delete the car.');
     }
   };
+
   const formatAmount = (amount) => {
-  if (amount >= 10000000) {
-    return (amount / 10000000).toFixed(2);
-  } else {
-    return (amount / 100000).toFixed(2);
-  }
-};
+    if (amount >= 10000000) {
+      return (amount / 10000000).toFixed(2);
+    } else {
+      return (amount / 100000).toFixed(2);
+    }
+  };
 
   const getPriceUnit = (amount) => {
     return amount >= 10000000 ? 'Cr' : 'Lakh';
   };
 
-
-
-
   return (
     <div className="bg-white relative rounded-lg overflow-hidden shadow-md border border-[#E5E5E5] transition-transform  w-full max-w-sm mx-auto">
-      {/* Heart icon */}
       {user && (
         <button
           className="absolute top-3 right-3 text-xl text-gray-600 hover:text-red-600 transition-colors"
@@ -100,15 +97,17 @@ const CarCard = ({ name, brand, minprice, maxprice, image, _id, listedby }) => {
         </button>
       )}
 
-      <img src={image} alt={`${name} image`} className="w-full h-48 object-cover" />
+      <img
+        src={Array.isArray(image) ? image[0] : image}
+        alt={`${name} image`}
+        className="w-full h-48 object-cover"
+      />
 
       <div className="p-4 space-y-2">
         <h2 className="text-[#14213D] font-semibold text-lg">{name}</h2>
         <p className="text-[#14213D] text-sm">
-          ₹{formatAmount(minprice)} - {formatAmount(maxprice)} {getPriceUnit(maxprice)}
+          ₹{formatAmount(price)} {getPriceUnit(price)}
         </p>
-
-
 
         <div className="flex gap-4">
           <button
@@ -121,7 +120,7 @@ const CarCard = ({ name, brand, minprice, maxprice, image, _id, listedby }) => {
           {user?.userId === listedby && (
             <>
               <button
-                className="px-4 text-[#FCA311] border border-[#FCA311]  py-2 rounded transition duration-200 ease-in-out hover:bg-[#FCA311] hover:text-[#14213D]"
+                className="px-4 text-[#FCA311] border border-[#FCA311] py-2 rounded transition duration-200 ease-in-out hover:bg-[#FCA311] hover:text-[#14213D]"
                 onClick={() => navigate(`/edit/${_id}`)}
               >
                 Edit

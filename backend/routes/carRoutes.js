@@ -26,8 +26,8 @@ router.post('/add', userAuth, async (req, res) => {
   const {
     name,
     brand,
-    minprice,
-    maxprice,
+    price,
+    
     category,
     fuelType,
     transmission,
@@ -37,16 +37,20 @@ router.post('/add', userAuth, async (req, res) => {
     location 
   } = req.body;
 
-  if (!name || !brand || !minprice || !maxprice || !category || !image || !location) {
+  if (!name || !brand || !price || !category || !image || !location) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
+
+  if (!Array.isArray(image) || image.length < 2 || image.length > 3) {
+  return res.status(400).json({ message: 'Please provide 2 to 3 images' });
+}
+
 
   try {
     const newCar = new Car({
       name,
       brand,
-      minprice,
-      maxprice,
+      price,
       category,
       fuelType,
       transmission,
@@ -87,8 +91,8 @@ router.post('/:id', userAuth, async (req, res) => {
     const {
       name,
       brand,
-      minprice,
-      maxprice,
+      price,
+      
       category,
       fuelType,
       transmission,
@@ -112,8 +116,7 @@ router.post('/:id', userAuth, async (req, res) => {
     
     car.name = name;
     car.brand = brand;
-    car.minprice = minprice;
-    car.maxprice = maxprice;
+    car.price=price;
     car.category = category;
     car.fuelType = fuelType;
     car.transmission = transmission;

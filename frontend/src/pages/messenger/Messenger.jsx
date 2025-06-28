@@ -50,7 +50,7 @@ export default function Messenger() {
         if (user && user.userId) {
             socket.current.emit("addUser", user.userId);
             socket.current.on("getUsers", (users) => {
-            console.log(users);
+            
             });
         }
         }, [user]);
@@ -133,6 +133,13 @@ export default function Messenger() {
   
     
   }, [messages])
+
+  const handlechangeConv=async (c)=>{
+
+    setCurrchat(c);
+
+
+  }
   
 
   return (
@@ -144,7 +151,7 @@ export default function Messenger() {
                 <div className="chatMenuWrapper">
                     <input type="text" placeholder='search for friends' className='chatMenuInput' />
                     {conversations.map((c, index) => (
-                        <div key={index} onClick={() => setCurrchat(c)}>
+                        <div key={index} onClick={()=>{handlechangeConv(c)}}>
                             <Conversation conversation={c} currUser={user} />
                         </div>
                         ))}

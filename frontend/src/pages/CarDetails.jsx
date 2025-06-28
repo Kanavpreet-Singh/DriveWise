@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
-
+import { useNavigate } from 'react-router-dom';
 const cityList = [
   { name: 'Delhi', coordinates: [77.1025, 28.7041] },
   { name: 'Mumbai', coordinates: [72.8777, 19.076] },
@@ -35,6 +35,7 @@ const CarDetails = () => {
   const [city, setCity] = useState('');
   const { user } = useAuth();
   const commentRef = useRef();
+  const navigate = useNavigate();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
@@ -117,6 +118,42 @@ const CarDetails = () => {
     return nearestCity;
   };
 
+  const handleChatWithDealer = async () => {
+
+   
+  if (!user) {
+    toast.warn("Please sign in to start a conversation.");
+    return;
+  }
+
+  
+  if (user.role === "dealer") {
+    toast.error("Dealers cannot start conversations with other dealers.");
+    return;
+  }
+
+  
+  if (user.userId === car.listedby) {
+    toast.info("You cannot start a conversation with yourself.");
+    return;
+  }
+  try {
+    const res = await axios.get(
+      `${import.meta.env.VITE_BACKEND_URL}/conversation/find/${user.userId}/${car.listedby}`
+    );
+
+    const conversation = res.data;
+    console.log("Conversation:", conversation);
+
+    
+     navigate(`/messenger`);
+
+  } catch (err) {
+    console.log("Error in handling chat with dealer:", err);
+  }
+};
+
+
   if (!car) return <p>Loading car details...</p>;
 
   return (
@@ -188,8 +225,8 @@ const CarDetails = () => {
             </div>
           </div>
 
-          <button className="bg-yellow hover:bg-blue text-white font-bold py-3 px-6 rounded-lg transition duration-200">
-            View Dealerships
+          <button onClick={handleChatWithDealer} className="bg-yellow hover:bg-blue text-white font-bold py-3 px-6 rounded-lg transition duration-200">
+            Chat with dealer
           </button>
 
           {user?.role === 'customer' && (

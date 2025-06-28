@@ -45,6 +45,38 @@ router.get("/:userId",async (req,res)=>{
 
 });
 
+// get or create conversation between two users
+router.get("/find/:firstUserId/:secondUserId", async (req, res) => {
+
+    if (req.params.firstUserId === req.params.secondUserId) {
+    return res.status(400).json({ message: "Cannot create conversation with yourself." });
+  }
+
+  try {
+    const conversation = await Conversation.findOne({
+      members: {
+        $all: [req.params.firstUserId, req.params.secondUserId],
+      },
+    });
+
+    if (conversation) {
+      return res.status(200).json(conversation);
+    }
+
+    // if not found, create it
+    const newConversation = new Conversation({
+      members: [req.params.firstUserId, req.params.secondUserId],
+    });
+
+    const savedConversation = await newConversation.save();
+    return res.status(201).json(savedConversation);
+
+  } catch (err) {
+    res.status(500).json(err);
+  }
+});
+
+
 
 
 module.exports = router;

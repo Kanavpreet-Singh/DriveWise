@@ -28,14 +28,20 @@ io.on("connection",(socket)=>{
 
     })
 
-    socket.on("sendMessage",({senderId,receiverId,text})=>{
-        const user=getUser(receiverId)
-        io.to(user.socketId).emit("getMessage",{
+    socket.on("sendMessage", ({ senderId, receiverId, text }) => {
+    const user = getUser(receiverId);
+
+    if (user) {
+        io.to(user.socketId).emit("getMessage", {
             senderId,
             text
-        })
+        });
+    } else {
+        console.log(`User with ID ${receiverId} not connected.`);
+        
+    }
+});
 
-    })
 
     socket.on("disconnect",()=>{
         console.log('a user disconnected')

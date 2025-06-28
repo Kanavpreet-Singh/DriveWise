@@ -40,10 +40,19 @@ const DealerProfile = () => {
   return (
     <div className="max-w-6xl mx-auto p-6">
       <h1 className="text-3xl font-bold text-[#14213D] mb-4">Dealer Profile</h1>
-      <div className="bg-[#E5E5E5] p-4 rounded-lg shadow">
-        <p><strong>Username:</strong> {user.username}</p>
-        <p><strong>Email:</strong> {user.email}</p>
-      </div>
+      <div className="flex flex-col sm:flex-row items-center bg-[#E5E5E5] p-6 rounded-lg shadow mb-10">
+  <img
+    src={user.profilePic || "https://res.cloudinary.com/demo/image/upload/v1234567890/default_profile.jpg"}
+    alt="Dealer"
+    className="w-32 h-32 rounded-full border-2 border-[#FCA311] object-cover mb-4 sm:mb-0 sm:mr-6"
+    loading="lazy"
+  />
+  <div className="text-center sm:text-left">
+    <p className="text-xl font-semibold text-[#14213D]">{user.username}</p>
+    <p className="text-gray-700">{user.email}</p>
+  </div>
+</div>
+
 
       <h2 className="text-2xl mt-8 mb-4 font-semibold text-[#14213D]">Your Listed Cars</h2>
 

@@ -194,6 +194,24 @@ router.post('/signin',async(req,res)=>{
 
 });
 
+
+router.get('/getgeneraluser/:id',async(req,res)=>{
+
+  
+  
+  let user=await User.findById(req.params.id);
+
+  if(!user) {
+
+    return res.status(400).json({message:'user not found'})
+
+  }
+
+  return res.status(200).json({user:user});
+
+});
+
+
 router.get('/getuser',userAuth,async(req,res)=>{
 
   const {userId}=req.user;

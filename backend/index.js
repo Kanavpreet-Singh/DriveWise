@@ -4,6 +4,8 @@ const mongoose=require('mongoose')
 const cors=require('cors'); 
 const userRoutes=require('./routes/userRoutes'); 
 const carRoutes=require('./routes/carRoutes'); 
+const conversationRoutes=require('./routes/conversations'); 
+const messageRoutes=require('./routes/messages'); 
 app.use(cors());
 app.use(express.json());
 const port=5000;    
@@ -21,5 +23,8 @@ mongoose.connect('mongodb://localhost:27017/drivecircle').then(() => {
 //configuring routes
 app.use('/user',userRoutes);
 app.use('/car',carRoutes);
+app.use('/conversation',conversationRoutes);
+app.use('/message',messageRoutes);
+
 
 

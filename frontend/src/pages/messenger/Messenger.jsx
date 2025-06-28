@@ -7,7 +7,8 @@ import ChatOnline from '../../components/chatOnline/ChatOnline'
 import { useAuth } from '../../context/AuthContext'
 import { useState } from 'react'
 import io from "socket.io-client"
-
+import { toast } from 'react-toastify';
+import { useNavigate } from 'react-router-dom';
 
 export default function Messenger() {
 
@@ -16,11 +17,13 @@ export default function Messenger() {
     const [messages, setMessages] = useState([])
     const [newMessage, setnewMessage] = useState("");
     const [arrivalMessage, setarrivalMessage] = useState(null)
-    
+    const navigate = useNavigate();
     const socket=useRef();
 
     const backend_url = import.meta.env.VITE_BACKEND_URL;
     const {user}=useAuth();
+
+    
     const scrollRef=useRef()
 
     useEffect(() => {

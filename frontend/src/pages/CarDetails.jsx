@@ -33,15 +33,22 @@ const CarDetails = () => {
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [city, setCity] = useState('');
+  const [dealername, setdealername] = useState(null)
   const { user } = useAuth();
   const commentRef = useRef();
   const navigate = useNavigate();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
-    fetchCar();
-    fetchComments();
-  }, [carId]);
+  fetchCar();
+  fetchComments();
+}, [carId]);
+
+useEffect(() => {
+  if (car && car.listedby) {
+    fetchDealer();
+  }
+}, [car]);
 
   useEffect(() => {
     if (car?.location?.coordinates?.length === 2) {
@@ -59,6 +66,15 @@ const CarDetails = () => {
       console.error(err);
     }
   };
+
+  const fetchDealer=async()=>{
+    try {
+      const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/user/getgeneraluser/${car.listedby}`);
+      setdealername(res.data.user.username);
+    } catch (err) {
+      console.error(err);
+    }
+  }
 
   const fetchComments = async () => {
     try {
@@ -145,7 +161,10 @@ const CarDetails = () => {
     const conversation = res.data;
     console.log("Conversation:", conversation);
 
-    
+    toast(`Click on "${dealername}" in the left sidebar to start chatting with the dealer.`,{
+  autoClose: 6000  
+});
+
      navigate(`/messenger`);
 
   } catch (err) {
@@ -223,6 +242,10 @@ const CarDetails = () => {
               <p className="font-semibold text-gray-700">City:</p>
               <p className="text-gray-800">{city}</p>
             </div>
+            <div className="bg-gray-50 p-4 rounded-lg">
+            <p className="font-semibold text-gray-700">Dealer Name:</p>
+            <p className="text-gray-800">{dealername || "Loading..."}</p>
+          </div>
           </div>
 
           <button onClick={handleChatWithDealer} className="bg-yellow hover:bg-blue text-white font-bold py-3 px-6 rounded-lg transition duration-200">

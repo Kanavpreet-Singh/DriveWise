@@ -1,7 +1,7 @@
 import React from 'react';
 import carImage from '../assets/image.png';
 import HomeCard from '../components/HomeCard';
-import BrandsCard from '../components/brandsCard';
+import BrandsCard from '../components/BrandsCard';
 import NearbyFinder from '../components/NearbyFinder';
 import EmiFinder from '../components/EmiFinder';
 

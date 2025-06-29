@@ -14,6 +14,7 @@ import CarDetails from "./pages/CarDetails";
 import Home from "./pages/Home";
 import EditCar from "./pages/EditCar";
 import Messenger from "./pages/messenger/Messenger";
+import PredictPrice from './pages/PredictPrice';
 
 function App() {
   const location = useLocation();
@@ -36,6 +37,7 @@ function App() {
         <Route path="/dealer" element={<DealerProfile />} />
         <Route path="/customer" element={<CustomerProfile />} />
         <Route path="/messenger" element={<Messenger />} />
+        <Route path="/predict-price" element={<PredictPrice />} />
       </Routes>
 
       

@@ -4,6 +4,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import CarCard from '../components/CarCard';
 import { FaPlus } from 'react-icons/fa';
+import PricePredictCard from '../components/PricePredictCard';
 
 const Catalogue = () => {
   const [searchParams] = useSearchParams();
@@ -154,99 +155,187 @@ if (!isNaN(min) && !isNaN(max)) {
 
       
 
-      <div className="bg-white shadow-lg rounded-xl p-6 mb-8 border border-gray-200">
-        <h3 className="text-2xl font-bold text-[#14213D] mb-6">Filter Cars</h3>
+      <div className="bg-gradient-to-br from-white to-gray-50 shadow-xl rounded-2xl p-8 mb-8 border border-gray-100">
+  <div className="flex items-center space-x-3 mb-8">
+    <div className="bg-[#FCA311] rounded-full p-2">
+      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+      </svg>
+    </div>
+    <div>
+      <h3 className="text-2xl font-bold text-[#14213D]">Filter Cars</h3>
+      <p className="text-sm text-gray-600">Find your perfect car with advanced filters</p>
+    </div>
+  </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
-            <select
-              value={filters.brand}
-              onChange={(e) => setFilters({ ...filters, brand: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#FCA311] transition"
-            >
-              <option value="">Select Brand</option>
-              {['Toyota', 'Hyundai', 'Suzuki', 'Honda', 'Tata', 'Mahindra', 'Kia', 'BMW', 'Mercedes-Benz', 'Audi', 'Tesla', 'Volkswagen'].map((brand) => (
-                <option key={brand} value={brand}>{brand}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Fuel Type</label>
-            <select
-              value={filters.fuelType}
-              onChange={(e) => setFilters({ ...filters, fuelType: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#FCA311] transition"
-            >
-              <option value="">Select Fuel Type</option>
-              {['Petrol', 'Diesel', 'CNG', 'Electric', 'Hybrid'].map((type) => (
-                <option key={type} value={type}>{type}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Transmission</label>
-            <select
-              value={filters.transmission}
-              onChange={(e) => setFilters({ ...filters, transmission: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#FCA311] transition"
-            >
-              <option value="">Select Transmission</option>
-              {['Manual', 'Automatic'].map((trans) => (
-                <option key={trans} value={trans}>{trans}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Seats</label>
-            <select
-              value={filters.seats}
-              onChange={(e) => setFilters({ ...filters, seats: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#FCA311] transition"
-            >
-              <option value="">Select Seats</option>
-              {[2, 4, 5, 6, 7, 8].map((seat) => (
-                <option key={seat} value={seat}>{seat}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-            <select
-              value={filters.category}
-              onChange={(e) => setFilters({ ...filters, category: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#FCA311] transition"
-            >
-              <option value="">Select Category</option>
-              {['Hatchback', 'Sedan', 'SUV', 'Luxury', 'Super Luxury'].map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div className="mt-6 flex flex-wrap gap-4">
-          <button
-            onClick={handleApplyFilters}
-            className="border border-[#FCA311] text-[#FCA311] px-5 py-2 rounded-md font-medium transition duration-200 ease-in-out hover:bg-[#FCA311] hover:text-[#14213D]"
-          >
-            Apply Filters
-          </button>
-
-          {filtersApplied && (
-            <button
-              onClick={handleClearFilters}
-              className="text-[#FCA311] hover:underline text-sm font-medium"
-            >
-              Clear All Filters
-            </button>
-          )}
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div>
+      <label className="flex items-center space-x-2 text-sm font-semibold text-[#14213D] mb-2">
+        <svg className="w-4 h-4 text-[#FCA311]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
+        </svg>
+        <span>Brand</span>
+      </label>
+      <div className="relative">
+        <select
+          value={filters.brand}
+          onChange={(e) => setFilters({ ...filters, brand: e.target.value })}
+          className="w-full appearance-none bg-white border-2 border-gray-200 rounded-xl px-4 py-3 pr-10 focus:outline-none focus:border-[#FCA311] focus:ring-2 focus:ring-[#FCA311]/20 transition-all duration-200 text-gray-700 hover:border-gray-300 font-medium"
+        >
+          <option value="">Select Brand</option>
+          {['Toyota', 'Hyundai', 'Suzuki', 'Honda', 'Tata', 'Mahindra', 'Kia', 'BMW', 'Mercedes-Benz', 'Audi', 'Tesla', 'Volkswagen'].map((brand) => (
+            <option key={brand} value={brand}>{brand}</option>
+          ))}
+        </select>
+        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
         </div>
       </div>
+    </div>
+
+    <div>
+      <label className="flex items-center space-x-2 text-sm font-semibold text-[#14213D] mb-2">
+        <svg className="w-4 h-4 text-[#FCA311]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" />
+        </svg>
+        <span>Fuel Type</span>
+      </label>
+      <div className="relative">
+        <select
+          value={filters.fuelType}
+          onChange={(e) => setFilters({ ...filters, fuelType: e.target.value })}
+          className="w-full appearance-none bg-white border-2 border-gray-200 rounded-xl px-4 py-3 pr-10 focus:outline-none focus:border-[#FCA311] focus:ring-2 focus:ring-[#FCA311]/20 transition-all duration-200 text-gray-700 hover:border-gray-300 font-medium"
+        >
+          <option value="">Select Fuel Type</option>
+          {['Petrol', 'Diesel', 'CNG', 'Electric', 'Hybrid'].map((type) => (
+            <option key={type} value={type}>{type}</option>
+          ))}
+        </select>
+        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <label className="flex items-center space-x-2 text-sm font-semibold text-[#14213D] mb-2">
+        <svg className="w-4 h-4 text-[#FCA311]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        <span>Transmission</span>
+      </label>
+      <div className="relative">
+        <select
+          value={filters.transmission}
+          onChange={(e) => setFilters({ ...filters, transmission: e.target.value })}
+          className="w-full appearance-none bg-white border-2 border-gray-200 rounded-xl px-4 py-3 pr-10 focus:outline-none focus:border-[#FCA311] focus:ring-2 focus:ring-[#FCA311]/20 transition-all duration-200 text-gray-700 hover:border-gray-300 font-medium"
+        >
+          <option value="">Select Transmission</option>
+          {['Manual', 'Automatic'].map((trans) => (
+            <option key={trans} value={trans}>{trans}</option>
+          ))}
+        </select>
+        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <label className="flex items-center space-x-2 text-sm font-semibold text-[#14213D] mb-2">
+        <svg className="w-4 h-4 text-[#FCA311]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+        </svg>
+        <span>Seats</span>
+      </label>
+      <div className="relative">
+        <select
+          value={filters.seats}
+          onChange={(e) => setFilters({ ...filters, seats: e.target.value })}
+          className="w-full appearance-none bg-white border-2 border-gray-200 rounded-xl px-4 py-3 pr-10 focus:outline-none focus:border-[#FCA311] focus:ring-2 focus:ring-[#FCA311]/20 transition-all duration-200 text-gray-700 hover:border-gray-300 font-medium"
+        >
+          <option value="">Select Seats</option>
+          {[2, 4, 5, 6, 7, 8].map((seat) => (
+            <option key={seat} value={seat}>{seat}</option>
+          ))}
+        </select>
+        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <label className="flex items-center space-x-2 text-sm font-semibold text-[#14213D] mb-2">
+        <svg className="w-4 h-4 text-[#FCA311]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+        </svg>
+        <span>Category</span>
+      </label>
+      <div className="relative">
+        <select
+          value={filters.category}
+          onChange={(e) => setFilters({ ...filters, category: e.target.value })}
+          className="w-full appearance-none bg-white border-2 border-gray-200 rounded-xl px-4 py-3 pr-10 focus:outline-none focus:border-[#FCA311] focus:ring-2 focus:ring-[#FCA311]/20 transition-all duration-200 text-gray-700 hover:border-gray-300 font-medium"
+        >
+          <option value="">Select Category</option>
+          {['Hatchback', 'Sedan', 'SUV', 'Luxury', 'Super Luxury'].map((cat) => (
+            <option key={cat} value={cat}>{cat}</option>
+          ))}
+        </select>
+        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div className="mt-8 flex flex-wrap items-center justify-between gap-4 pt-6 border-t border-gray-200">
+    <div className="flex flex-wrap gap-3">
+      <button
+        onClick={handleApplyFilters}
+        className="bg-[#FCA311] hover:bg-[#e2940e] text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-[#FCA311]/30 shadow-lg hover:shadow-xl flex items-center space-x-2"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <span>Apply Filters</span>
+      </button>
+
+      {filtersApplied && (
+        <button
+          onClick={handleClearFilters}
+          className="bg-white border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-900 px-6 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center space-x-2 hover:bg-gray-50"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          <span>Clear All Filters</span>
+        </button>
+      )}
+    </div>
+
+    <div className="text-sm text-gray-500 flex items-center space-x-1">
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <span>Use filters to narrow down your search</span>
+    </div>
+  </div>
+</div>
 
       {showNearbyHeading && (
         <h2 className="text-lg sm:text-xl font-semibold text-[#14213D] mb-6 flex items-center gap-2">
@@ -295,6 +384,8 @@ if (!isNaN(min) && !isNaN(max)) {
           ))}
         </div>
       )}
+
+      <PricePredictCard/>
     </div>
   );
 };

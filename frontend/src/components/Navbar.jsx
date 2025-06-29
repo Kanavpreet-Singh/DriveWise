@@ -57,10 +57,11 @@ const Navbar = () => {
       
       <div className="hidden md:flex space-x-6 mr-4 items-center">
         <a href='/' className='hover:underline'>Home</a>
+        <a href='/catalogue' className='hover:underline'>Catalogue</a>
         {isLoggedIn && (
           <a href='/messenger' className='hover:underline'>Messenger</a>
         )}
-        <a href='/catalogue' className='hover:underline'>Catalogue</a>
+        
 
 
         
@@ -108,11 +109,12 @@ const Navbar = () => {
       {isOpen && (
         <div className="absolute top-16 right-4 bg-white border border-gray shadow-md flex flex-col space-y-4 p-4 md:hidden z-10">
           <a href='/' className='hover:text-yellow'>Home</a>
+          <a href='/catalogue' className='hover:text-yellow'>Catalogue</a>
           {isLoggedIn && (
             <a href='/messenger' className='hover:text-yellow'>Messenger</a>
           )}
 
-          <a href='/catalogue' className='hover:text-yellow'>Catalogue</a>
+          
           
           {isLoggedIn ? (
             <>

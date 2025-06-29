@@ -1,5 +1,6 @@
 const express=require('express');
 const app=express();
+require('dotenv').config();
 const mongoose=require('mongoose')
 const cors=require('cors'); 
 const userRoutes=require('./routes/userRoutes'); 
@@ -14,7 +15,7 @@ app.listen(port,()=>{
     console.log(`Server is running on port ${port}`);
 });
 
-mongoose.connect('mongodb://localhost:27017/drivecircle').then(() => {
+mongoose.connect(process.env.MONGO_URL).then(() => {
     console.log('Connected to MongoDB');
 }).catch(err => {
     console.error('MongoDB connection error:', err);

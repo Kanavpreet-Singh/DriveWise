@@ -93,58 +93,68 @@ const AddCar = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    const coords = formData.location.coordinates;
-    if (!coords.length) {
-      toast.error('Please select a valid city from the dropdown');
+  e.preventDefault();
+  const coords = formData.location.coordinates;
+  if (!coords.length) {
+    toast.error('Please select a valid city from the dropdown');
+    return;
+  }
+
+  // Image validation - BEFORE upload or API call
+  if (imageSource === 'upload') {
+    const validFiles = imageFiles.filter(Boolean);
+    if (validFiles.length < 2) {
+      toast.error("Please upload at least 2 images.");
       return;
     }
-
-    try {
-      setUploading(true);
-      let finalImages = [];
-
-      if (imageSource === 'upload') {
-        const uploads = await Promise.all(
-          imageFiles.filter(Boolean).map((file) => uploadToCloudinary(file))
-        );
-        finalImages = uploads;
-      } else {
-        const validUrls = imageUrls.filter((url) => url.trim());
-        if (validUrls.length < 2) {
-          toast.error("Please provide at least 2 image URLs.");
-          setUploading(false);
-          return;
-        }
-        finalImages = validUrls.slice(0, 3);
-      }
-
-      const token = localStorage.getItem('token');
-      const res = await axios.post(`${backend_url}/car/add`,
-        {
-          ...formData,
-          image: finalImages,
-          location: {
-            type: 'Point',
-            coordinates: coords
-          }
-        },
-        {
-          headers: { token }
-        });
-
-      toast.success(res.data.message);
-      setFormData({ name: '', brand: '', price: '', category: '', fuelType: '', transmission: '', year: '', seats: '', image: [], location: { city: '', coordinates: [] } });
-      setImageFiles([]);
-      setImageUrls(['', '', '']);
-      setCityInput('');
-      setUploading(false);
-      navigate('/catalogue');
-    } catch (error) {
-      toast.error(error.message || 'Something went wrong');
-      setUploading(false);
+  } else {
+    const validUrls = imageUrls.filter((url) => url.trim());
+    if (validUrls.length < 2) {
+      toast.error("Please provide at least 2 image URLs.");
+      return;
     }
-  };
+  }
+
+  try {
+    setUploading(true);
+    let finalImages = [];
+
+    if (imageSource === 'upload') {
+      const uploads = await Promise.all(
+        imageFiles.filter(Boolean).map((file) => uploadToCloudinary(file))
+      );
+      finalImages = uploads;
+    } else {
+      finalImages = imageUrls.filter((url) => url.trim()).slice(0, 3);
+    }
+
+    const token = localStorage.getItem('token');
+    const res = await axios.post(`${backend_url}/car/add`,
+      {
+        ...formData,
+        image: finalImages,
+        location: {
+          type: 'Point',
+          coordinates: coords
+        }
+      },
+      {
+        headers: { token }
+      });
+
+    toast.success(res.data.message);
+    setFormData({ name: '', brand: '', price: '', category: '', fuelType: '', transmission: '', year: '', seats: '', image: [], location: { city: '', coordinates: [] } });
+    setImageFiles([]);
+    setImageUrls(['', '', '']);
+    setCityInput('');
+    setUploading(false);
+    navigate('/catalogue');
+  } catch (error) {
+    toast.error(error.response?.data?.message || error.message || 'Something went wrong');
+    setUploading(false);
+  }
+};
+
 
   return (
     <div className="max-w-xl mx-auto p-6 bg-white rounded shadow-md">
@@ -177,7 +187,7 @@ const AddCar = () => {
         <input name="year" type="number" placeholder="Year" required className="w-full border px-3 py-2" value={formData.year} onChange={handleChange} />
         <input name="seats" type="number" placeholder="Seats" className="w-full border px-3 py-2" value={formData.seats} onChange={handleChange} />
 
-        {/* CITY AUTOCOMPLETE */}
+        
         <div className="relative">
           <input
             type="text"
@@ -216,7 +226,7 @@ const AddCar = () => {
           )}
         </div>
 
-        {/* IMAGE HANDLING */}
+        
         <div className="space-y-2">
           <label className="block font-semibold text-gray-700">Image Source</label>
           <select className="w-full border px-3 py-2 rounded" value={imageSource} onChange={(e) => setImageSource(e.target.value)}>

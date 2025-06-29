@@ -19,7 +19,7 @@ const EditCar = () => {
     transmission: '',
     year: '',
     seats: '',
-    images: [''], // image URLs
+    images: [{ type: 'url', value: '' }],
   });
 
   const brands = ['Toyota', 'Hyundai', 'Suzuki', 'Honda', 'Tata', 'Mahindra', 'Kia', 'BMW', 'Mercedes-Benz', 'Audi', 'Tesla', 'Volkswagen'];
@@ -43,7 +43,9 @@ const EditCar = () => {
 
         setFormData({
           ...res.data.car,
-          images: Array.isArray(res.data.car.image) ? res.data.car.image : [res.data.car.image || ''],
+          images: Array.isArray(res.data.car.image)
+            ? res.data.car.image.map((img) => ({ type: 'url', value: img }))
+            : [{ type: 'url', value: res.data.car.image || '' }],
         });
       } catch (err) {
         toast.error('Failed to fetch car details');
@@ -67,15 +69,12 @@ const EditCar = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleImageChange = (index, value) => {
-    const updatedImages = [...formData.images];
-    updatedImages[index] = value;
-    setFormData((prev) => ({ ...prev, images: updatedImages }));
-  };
-
   const addImageField = () => {
     if (formData.images.length < 3) {
-      setFormData((prev) => ({ ...prev, images: [...prev.images, ''] }));
+      setFormData((prev) => ({
+        ...prev,
+        images: [...prev.images, { type: 'url', value: '' }],
+      }));
     }
   };
 
@@ -86,23 +85,55 @@ const EditCar = () => {
     }
   };
 
+  const uploadToCloudinary = async (file) => {
+    const data = new FormData();
+    data.append('file', file);
+    data.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/upload`, {
+      method: 'POST',
+      body: data,
+    });
+
+    const json = await res.json();
+    return json.secure_url;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const trimmedImages = formData.images.map(img => img.trim()).filter(img => img !== '');
-    if (trimmedImages.length < 2) {
-      toast.error('Please provide at least 2 valid image URLs.');
+    const validImages = formData.images.filter((img) =>
+      img.type === 'url' ? img.value.trim() !== '' : img.value instanceof File
+    );
+
+    if (validImages.length < 2) {
+      toast.error('Please provide at least 2 valid images.');
       return;
     }
 
     try {
+      const uploadedImageUrls = await Promise.all(
+        validImages.map(async (img) => {
+          if (img.type === 'file' && img.value instanceof File) {
+            return await uploadToCloudinary(img.value);
+          } else {
+            return img.value.trim();
+          }
+        })
+      );
+
       const token = localStorage.getItem('token');
-      const res = await axios.post(`${backend_url}/car/${id}`, {
-        ...formData,
-        image: trimmedImages,
-      }, {
-        headers: { token },
-      });
+      const res = await axios.post(
+        `${backend_url}/car/${id}`,
+        {
+          ...formData,
+          image: uploadedImageUrls,
+        },
+        {
+          headers: { token },
+        }
+      );
 
       toast.success(res.data.message || 'Car updated successfully');
       navigate('/catalogue');
@@ -119,51 +150,109 @@ const EditCar = () => {
 
         <select name="brand" required className="w-full border px-3 py-2" value={formData.brand} onChange={handleChange}>
           <option value="">Select Brand</option>
-          {brands.map((brand) => <option key={brand} value={brand}>{brand}</option>)}
+          {brands.map((brand) => (
+            <option key={brand} value={brand}>
+              {brand}
+            </option>
+          ))}
         </select>
 
         <input name="price" type="number" placeholder="Price (₹)" required className="w-full border px-3 py-2" value={formData.price} onChange={handleChange} />
 
         <select name="category" required className="w-full border px-3 py-2" value={formData.category} onChange={handleChange}>
           <option value="">Select Category</option>
-          {categories.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
+          {categories.map((cat) => (
+            <option key={cat} value={cat}>
+              {cat}
+            </option>
+          ))}
         </select>
 
         <select name="fuelType" required className="w-full border px-3 py-2" value={formData.fuelType} onChange={handleChange}>
           <option value="">Select Fuel Type</option>
-          {fuelTypes.map((f) => <option key={f} value={f}>{f}</option>)}
+          {fuelTypes.map((f) => (
+            <option key={f} value={f}>
+              {f}
+            </option>
+          ))}
         </select>
 
         <select name="transmission" required className="w-full border px-3 py-2" value={formData.transmission} onChange={handleChange}>
           <option value="">Select Transmission</option>
-          {transmissions.map((t) => <option key={t} value={t}>{t}</option>)}
+          {transmissions.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
         </select>
 
         <input name="year" type="number" placeholder="Year" required className="w-full border px-3 py-2" value={formData.year} onChange={handleChange} />
         <input name="seats" type="number" placeholder="Seats" className="w-full border px-3 py-2" value={formData.seats} onChange={handleChange} />
 
-        <div className="space-y-2">
-          <label className="block font-semibold text-gray-700">Image URLs (Min 2, Max 3):</label>
-          {formData.images.map((img, index) => (
-            <div key={index} className="flex gap-2 items-center">
-              <input
-                type="text"
-                placeholder={`Image ${index + 1}`}
-                value={img}
-                onChange={(e) => handleImageChange(index, e.target.value)}
-                className="w-full border px-3 py-2"
-              />
-              {formData.images.length > 2 && (
-                <button
-                  type="button"
-                  onClick={() => removeImageField(index)}
-                  className="text-red-600 font-bold text-xl"
+        <div className="space-y-4">
+          <label className="block font-semibold text-gray-700">Images (Min 2, Max 3)</label>
+          {formData.images.map((imgObj, index) => (
+            <div key={index} className="border rounded p-3 space-y-2">
+              <div className="flex items-center gap-3">
+                <select
+                  value={imgObj.type}
+                  onChange={(e) => {
+                    const updated = [...formData.images];
+                    updated[index].type = e.target.value;
+                    updated[index].value = '';
+                    setFormData((prev) => ({ ...prev, images: updated }));
+                  }}
+                  className="border px-2 py-1"
                 >
-                  ✕
-                </button>
+                  <option value="url">URL</option>
+                  <option value="file">File</option>
+                </select>
+
+                {formData.images.length > 2 && (
+                  <button
+                    type="button"
+                    onClick={() => removeImageField(index)}
+                    className="text-red-600 font-bold text-xl"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {imgObj.type === 'url' ? (
+                <input
+                  type="text"
+                  placeholder="Enter image URL"
+                  value={imgObj.value}
+                  onChange={(e) => {
+                    const updated = [...formData.images];
+                    updated[index].value = e.target.value;
+                    setFormData((prev) => ({ ...prev, images: updated }));
+                  }}
+                  className="w-full border px-3 py-2"
+                />
+              ) : (
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const updated = [...formData.images];
+                    updated[index].value = e.target.files[0];
+                    setFormData((prev) => ({ ...prev, images: updated }));
+                  }}
+                  className="w-full border px-3 py-2"
+                />
+              )}
+
+              {imgObj.type === 'url' && imgObj.value && (
+                <img src={imgObj.value} alt="preview" className="h-24 rounded shadow" />
+              )}
+              {imgObj.type === 'file' && imgObj.value && (
+                <img src={URL.createObjectURL(imgObj.value)} alt="preview" className="h-24 rounded shadow" />
               )}
             </div>
           ))}
+
           {formData.images.length < 3 && (
             <button
               type="button"

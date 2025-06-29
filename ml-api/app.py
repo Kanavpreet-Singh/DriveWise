@@ -18,4 +18,5 @@ def predict():
     return jsonify({'predicted_price': float(prediction[0])})
 
 if __name__ == '__main__':
-    app.run(port=5001)
+    port = int(os.environ.get('PORT', 5000))  # Use Render's PORT
+    app.run(host='0.0.0.0', port=port)

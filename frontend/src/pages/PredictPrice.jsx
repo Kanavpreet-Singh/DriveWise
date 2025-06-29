@@ -118,7 +118,7 @@ export default function PredictPrice() {
     try {
       const features = convertFormDataToFeatures()
 
-      const response = await fetch("http://localhost:5001/predict", {
+      const response = await fetch(import.meta.env.VITE_ML_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

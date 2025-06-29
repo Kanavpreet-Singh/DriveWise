@@ -81,8 +81,8 @@ router.post("/signup-request", async (req, res) => {
       html: `<p>Your OTP is <b>${otp}</b>. It is valid for 5 minutes.</p>`,
     };
 
-    // await transporter.sendMail(mailOptions);
-    console.log("OTP:", otp);
+     await transporter.sendMail(mailOptions);
+    
 
     res.status(200).json({ message: "OTP sent to email." });
   } catch (err) {

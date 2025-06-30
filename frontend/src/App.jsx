@@ -46,7 +46,16 @@ function App() {
       <>
         <ToastContainer position="top-right" autoClose={2000} />
         <div style={{ textAlign: 'center', marginTop: '20%' }}>
-          <h2>🚀 Starting up... Please wait</h2>
+         <div style={{ textAlign: 'center', marginTop: '20%' }}>
+        <h2>🚀 Starting up... Please wait</h2>
+        <p style={{ marginTop: '1rem', fontSize: '1rem' }}>
+          This happens because the backend server (hosted on Render free tier) goes to sleep after some inactivity.
+        </p>
+        <p style={{ marginTop: '0.5rem', fontSize: '1rem' }}>
+          It usually takes 10–15 seconds to wake up. Thanks for your patience!
+        </p>
+</div>
+
         </div>
       </>
     );

@@ -8,6 +8,32 @@ const DealerProfile = () => {
   const backend_url = import.meta.env.VITE_BACKEND_URL;
   const [user, setUser] = useState(null);
   const [cars, setCars] = useState([]);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteAccount = async () => {
+  const confirmed = window.confirm("Are you sure you want to delete your account? This action is irreversible.");
+  if (!confirmed) return;
+
+  try {
+    setDeleting(true);
+    const token = localStorage.getItem("token");
+
+    const res = await axios.delete(`${backend_url}/user/`, {
+      headers: {
+        token: token  
+      }
+    });
+
+    toast.success(res.data.message || "Account deleted successfully.");
+    localStorage.removeItem("token");
+    navigate("/signin");
+  } catch (error) {
+    console.error(error);
+    toast.error("Failed to delete account.");
+  } finally {
+    setDeleting(false);
+  }
+};
 
   useEffect(() => {
     const fetchDealerInfo = async () => {
@@ -117,6 +143,18 @@ const DealerProfile = () => {
       ) : (
         <p className="text-gray-600">You haven't liked any cars yet.</p>
       )}
+
+      <div className="mt-10 text-center">
+  <button
+    onClick={handleDeleteAccount}
+    className={`px-5 py-2 rounded text-white transition ${
+      deleting ? "bg-gray-500 cursor-not-allowed" : "bg-red-600 hover:bg-red-700"
+    }`}
+    disabled={deleting}
+  >
+    {deleting ? "Deleting Account..." : "Delete My Account"}
+  </button>
+</div>
     </div>
   );
 };

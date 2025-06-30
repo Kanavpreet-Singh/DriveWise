@@ -10,6 +10,8 @@ const bcrypt=require("bcrypt");
 const userAuth = require("../middleware/authentication/user");
 const  Car  = require("../models/Car");
 const rateLimitMap = new Map(); // email -> timestamp of last OTP request
+const  Conversation  = require("../models/Conversation");
+const  Message  = require("../models/Message");
 
 router.post("/signup-request", async (req, res) => {
   const signupRequestSchema = z.object({
@@ -193,7 +195,35 @@ router.post('/signin',async(req,res)=>{
   }
 
 });
+router.delete("/", userAuth, async (req, res) => {
+  try {
+    const { userId } = req.user;
 
+    
+    await User.findByIdAndDelete(userId);
+
+    
+    await Car.deleteMany({ listedby: userId });
+
+    
+    const conversations = await Conversation.find({
+      members: userId
+    });
+
+    const conversationIds = conversations.map(conv => conv._id);
+
+    
+    await Conversation.deleteMany({ _id: { $in: conversationIds } });
+
+    
+    await Message.deleteMany({ conversationId: { $in: conversationIds } });
+
+    res.status(200).json({ success: true, message: "User and related data deleted." });
+  } catch (error) {
+    console.error("Error deleting user and related data:", error);
+    res.status(500).json({ success: false, error: "Server error" });
+  }
+});
 
 router.get('/getgeneraluser/:id',async(req,res)=>{
 

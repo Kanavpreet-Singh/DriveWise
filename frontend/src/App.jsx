@@ -1,7 +1,7 @@
 import { Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
-import { ToastContainer } from 'react-toastify';
+import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 import Signup from "./pages/Signup";
@@ -15,22 +15,42 @@ import Home from "./pages/Home";
 import EditCar from "./pages/EditCar";
 import Messenger from "./pages/messenger/Messenger";
 import PredictPrice from './pages/PredictPrice';
-import { useEffect } from 'react';
-import axios from "axios"
+
+import { useEffect, useState } from 'react';
+import axios from "axios";
 
 function App() {
-  
   const location = useLocation();
+  const [serverAwake, setServerAwake] = useState(false);
 
   useEffect(() => {
-    // Silent backend warm-up
-    axios.get(`${import.meta.env.VITE_BACKEND_URL}/user/health`).catch((err) =>
-      console.error("Silent backend wake-up failed", err)
-    );
+    const wakeServer = async () => {
+      toast.info("Waking up server, please wait...");
+      try {
+        await axios.get(`${import.meta.env.VITE_BACKEND_URL}/user/health`);
+        setServerAwake(true);
+        toast.dismiss(); 
+      } catch (err) {
+        toast.error("Server is not responding. Please try again shortly.");
+        console.error("Silent backend wake-up failed", err);
+      }
+    };
+
+    wakeServer();
   }, []);
 
-  
   const hideFooterOn = ["/messenger"];
+
+  if (!serverAwake) {
+    return (
+      <>
+        <ToastContainer position="top-right" autoClose={2000} />
+        <div style={{ textAlign: 'center', marginTop: '20%' }}>
+          <h2>🚀 Starting up... Please wait</h2>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -50,7 +70,6 @@ function App() {
         <Route path="/predict-price" element={<PredictPrice />} />
       </Routes>
 
-      
       {!hideFooterOn.includes(location.pathname) && <Footer />}
 
       <ToastContainer position="top-right" autoClose={2000} />

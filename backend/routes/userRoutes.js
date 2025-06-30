@@ -13,6 +13,11 @@ const rateLimitMap = new Map(); // email -> timestamp of last OTP request
 const  Conversation  = require("../models/Conversation");
 const  Message  = require("../models/Message");
 
+router.get('/health', (req, res) => {
+  res.status(200).send("Backend is awake!");
+});
+
+
 router.post("/signup-request", async (req, res) => {
   const signupRequestSchema = z.object({
     username: z

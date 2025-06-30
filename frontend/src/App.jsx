@@ -15,9 +15,19 @@ import Home from "./pages/Home";
 import EditCar from "./pages/EditCar";
 import Messenger from "./pages/messenger/Messenger";
 import PredictPrice from './pages/PredictPrice';
+import { useEffect } from 'react';
+import axios from "axios"
 
 function App() {
+  
   const location = useLocation();
+
+  useEffect(() => {
+    // Silent backend warm-up
+    axios.get(`${import.meta.env.VITE_BACKEND_URL}/user/health`).catch((err) =>
+      console.error("Silent backend wake-up failed", err)
+    );
+  }, []);
 
   
   const hideFooterOn = ["/messenger"];

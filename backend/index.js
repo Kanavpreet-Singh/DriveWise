@@ -26,6 +26,3 @@ app.use('/user',userRoutes);
 app.use('/car',carRoutes);
 app.use('/conversation',conversationRoutes);
 app.use('/message',messageRoutes);
-
-
-

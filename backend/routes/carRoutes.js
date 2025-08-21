@@ -1,11 +1,12 @@
 const express = require("express");
 const  Car  = require("../models/Car");
 const  Comment  = require("../models/Comment");
-
+const { GoogleGenAI } = require("@google/genai");
 const userAuth = require("../middleware/authentication/user");
 const  User  = require("../models/User");
 const router = express.Router();
 
+require("dotenv").config();
 
 router.get('/allcars', async (req, res) => {
   try {
@@ -23,6 +24,120 @@ router.get('/allcars', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
+const ai = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY,
+});
+
+
+router.get("/requestedcars", async (req, res) => {
+  try {
+    const userQuery = req.query.q; 
+    if (!userQuery) {
+      return res.status(400).json({ message: "Missing query parameter ?q=" });
+    }
+
+    // Ask Gemini
+    const response = await ai.models.generateContent({
+  model: "gemini-2.5-flash",
+  contents: `
+    Extract car filters from the natural language query into JSON only.
+    Input query: "${userQuery}"
+  `,
+  config: {
+    responseMimeType: "application/json",
+    responseSchema: {
+      type: "object",
+      properties: {
+        brand: { type: "string", enum: ["Toyota", "Hyundai", "Suzuki", "Honda", "Tata", "Mahindra", "Kia", "BMW", "Mercedes-Benz", "Audi", "Tesla", "Volkswagen", "null"] },
+        minPrice: { type: "integer", nullable: true },
+        maxPrice: { type: "integer", nullable: true },
+        category: { type: "string", enum: ["Hatchback", "Sedan", "SUV", "Luxury", "Super Luxury", "null"] },
+        fuelType: { type: "string", enum: ["Petrol", "Diesel", "CNG", "Electric", "Hybrid", "null"] },
+        transmission: { type: "string", enum: ["Manual", "Automatic", "null"] },
+        year: { type: "integer", nullable: true },
+        seats: { type: "integer", nullable: true },
+        colorOptions: { type: "array", items: { type: "string" } }
+        
+      },
+      required: ["brand", "minPrice", "maxPrice", "category", "fuelType", "transmission", "year", "seats", "colorOptions"],
+      additionalProperties: false
+    }
+  }
+});
+    
+    const text=response.text;
+
+    // Parse JSON safely
+    let filters;
+    try {
+      filters = JSON.parse(text);
+    } catch (parseErr) {
+      console.error("Failed to parse Gemini response:", rawText);
+      return res.status(500).json({ message: "Invalid AI response format" });
+    }
+
+   
+
+    let query = {};
+
+    // Brand
+    if (filters.brand && filters.brand !== "null") {
+      query.brand = filters.brand;
+    }
+
+    // Category
+    if (filters.category && filters.category !== "null") {
+      query.category = filters.category;
+    }
+
+    // Fuel Type
+    if (filters.fuelType && filters.fuelType !== "null") {
+      query.fuelType = filters.fuelType;
+    }
+
+    // Transmission
+    if (filters.transmission && filters.transmission !== "null") {
+      query.transmission = filters.transmission;
+    }
+
+    // Seats
+    if (filters.seats) {
+      query.seats = filters.seats;
+    }
+
+    // Year
+    if (filters.year) {
+      query.year = filters.year;
+    }
+
+    // Color Options (match if requested colors exist in array)
+    if (filters.colorOptions && filters.colorOptions.length > 0) {
+      query.colorOptions = { $in: filters.colorOptions };
+    }
+
+    // Price Range
+    if (filters.minPrice && filters.maxPrice) {
+      query.price = { $gte: filters.minPrice, $lte: filters.maxPrice };
+    } else if (filters.minPrice) {
+      query.price = { $gte: filters.minPrice };
+    } else if (filters.maxPrice) {
+      query.price = { $lte: filters.maxPrice };
+    }
+
+    // Fetch cars
+    const cars = await Car.find(query);
+
+    res.status(200).json(cars);
+
+  } catch (error) {
+    console.error("Error in /requestedcars:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
+
 router.post('/add', userAuth, async (req, res) => {
   const {
     name,

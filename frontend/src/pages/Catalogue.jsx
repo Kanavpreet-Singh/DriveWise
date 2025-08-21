@@ -2,12 +2,19 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { toast } from 'react-toastify';
+
 import CarCard from '../components/CarCard';
 import { FaPlus } from 'react-icons/fa';
 import PricePredictCard from '../components/PricePredictCard';
 
 const Catalogue = () => {
   const [searchParams] = useSearchParams();
+  
+  const [requestText, setRequestText] = useState("");
+
+
+  const [errorMessage, setErrorMessage] = useState("");
   const { user } = useAuth();
   const navigate = useNavigate();
   const [cars, setCars] = useState([]);
@@ -20,6 +27,7 @@ const Catalogue = () => {
   });
   const [filtersApplied, setFiltersApplied] = useState(false);
   const [showNearbyHeading, setShowNearbyHeading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const backend_url = import.meta.env.VITE_BACKEND_URL;
 
   const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
@@ -107,6 +115,39 @@ if (!isNaN(min) && !isNaN(max)) {
     }
   }, [nearbyFlag]);
 
+
+  const fetchRequestedCars = async () => {
+
+    if (!user) {
+        toast.warn("Please sign in use AI based Car finder.");
+        return;
+      }
+
+  if (!requestText.trim()) return;
+
+  try {
+    setLoading(true)
+    setErrorMessage(""); 
+    const res = await fetch(`${backend_url}/car/requestedcars?q=${encodeURIComponent(requestText)}`, {
+  method: "GET", 
+});
+
+if (!res.ok) {
+  throw new Error("Backend request failed");
+}
+
+const data = await res.json();
+setCars(data);
+  } catch (err) {
+    setErrorMessage("⚠️ Could not fetch recommended cars. Please try again later.");
+    setCars([]); 
+  }
+  finally {
+      setLoading(false); 
+    }
+};
+
+
   const handleApplyFilters = async () => {
     try {
       const res = await axios.get(`${backend_url}/car/allcars`);
@@ -125,6 +166,15 @@ if (!isNaN(min) && !isNaN(max)) {
       console.error('Error filtering cars:', err);
     }
   };
+
+  const handleClearQuery = () => {
+  setRequestText("");       
+  setErrorMessage("");      
+  fetchCars();              
+  setFiltersApplied(false); 
+  setShowNearbyHeading(false);
+};
+
 
   const handleClearFilters = () => {
     setFilters({
@@ -315,6 +365,9 @@ if (!isNaN(min) && !isNaN(max)) {
         <span>Apply Filters</span>
       </button>
 
+      
+
+
       {filtersApplied && (
         <button
           onClick={handleClearFilters}
@@ -336,6 +389,86 @@ if (!isNaN(min) && !isNaN(max)) {
     </div>
   </div>
 </div>
+
+      <div className="mt-4 mb-7">
+  <textarea
+    value={requestText}
+    onChange={(e) => setRequestText(e.target.value)}
+    placeholder="Type here what sort of car you are looking for.."
+    className="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-[#FCA311] focus:ring-2 focus:ring-[#FCA311]/20 outline-none transition-all duration-200 resize-none shadow-sm hover:shadow-md"
+    rows={3}
+  />
+  <div className="flex flex-col sm:flex-row gap-3 mt-4 w-full sm:w-auto">
+  {/* Get Recommended Cars Button */}
+  <button
+    onClick={fetchRequestedCars}
+    disabled={loading}
+    className="flex-1 sm:flex-none bg-[#FCA311] hover:bg-[#e2940e] disabled:bg-[#FCA311]/70 text-white px-8 py-3 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 disabled:scale-100 focus:outline-none focus:ring-4 focus:ring-[#FCA311]/30 shadow-lg hover:shadow-xl disabled:shadow-md flex items-center justify-center space-x-2 min-w-[200px]"
+  >
+    {loading ? (
+      <>
+        <svg
+          className="animate-spin h-5 w-5 text-white"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+          ></circle>
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 
+            0 12h4zm2 5.291A7.962 7.962 0 014 
+            12H0c0 3.042 1.135 5.824 3 
+            7.938l3-2.647z"
+          ></path>
+        </svg>
+        <span>Loading...</span>
+      </>
+    ) : (
+      <>
+        <svg
+          className="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M21 21l-6-6m2-5a7 7 0 11-14 
+            0 7 7 0 0114 0z"
+          />
+        </svg>
+        <span>Get Recommended Cars</span>
+      </>
+    )}
+  </button>
+
+  {/* Clear Query Button - only visible if input is not empty */}
+  {requestText.trim() !== "" && (
+    <button
+      onClick={handleClearQuery}
+      className="flex-1 sm:flex-none bg-white border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-900 px-8 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center space-x-2 hover:bg-gray-50 min-w-[200px]"
+    >
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+      </svg>
+      <span>Clear Query</span>
+    </button>
+  )}
+</div>
+
+</div>
+
 
       {showNearbyHeading && (
         <h2 className="text-lg sm:text-xl font-semibold text-[#14213D] mb-6 flex items-center gap-2">
@@ -361,6 +494,12 @@ if (!isNaN(min) && !isNaN(max)) {
           Showing results <span className="text-[#FCA311]">near you</span>
         </h2>
       )}
+
+
+      {errorMessage && (
+        <div className="text-red-600 font-semibold my-2">{errorMessage}</div>
+      )}
+
 
 
 

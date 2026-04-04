@@ -1,17 +1,20 @@
 const express = require("express");
 const router = express.Router();
-const nodemailer = require("nodemailer");
 require('dotenv').config();
 const jwt = require("jsonwebtoken");
 const User = require("../models/User"); 
 const { z } = require('zod');
+const sendOTPEmail = require("../utils/sendOTPEmail");
 const otpStore = new Map();
+const passwordResetStore = new Map();
 const bcrypt=require("bcrypt");
 const userAuth = require("../middleware/authentication/user");
 const  Car  = require("../models/Car");
 const rateLimitMap = new Map(); // email -> timestamp of last OTP request
+const passwordResetRateLimitMap = new Map();
 const  Conversation  = require("../models/Conversation");
 const  Message  = require("../models/Message");
+const crypto = require("crypto");
 
 router.get('/health', (req, res) => {
   res.status(200).send("Backend is awake!");
@@ -39,7 +42,6 @@ router.post("/signup-request", async (req, res) => {
       .string()
       .url("Profile picture must be a valid URL")
       .optional()
-      .default("https://res.cloudinary.com/demo/image/upload/v1718040000/default_profile.png") // ✅ Default fallback
   });
 
   const validationResult = signupRequestSchema.safeParse(req.body);
@@ -50,6 +52,7 @@ router.post("/signup-request", async (req, res) => {
   }
 
   const { username, email, password, profilePic } = validationResult.data;
+  const normalizedProfilePic = profilePic?.trim() ? profilePic.trim() : undefined;
 
   const now = Date.now();
   const lastRequestTime = rateLimitMap.get(email);
@@ -70,31 +73,19 @@ router.post("/signup-request", async (req, res) => {
     const otpExpiry = Date.now() + 5 * 60 * 1000; // 5 mins
 
     
-    otpStore.set(email, { otp, otpExpiry, username, password, profilePic });
+    otpStore.set(email, { otp, otpExpiry, username, password, profilePic: normalizedProfilePic });
     rateLimitMap.set(email, now);
 
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-
-    const mailOptions = {
-      from: '"DriveCircle" <drivecircle05@gmail.com>',
-      to: email,
-      subject: "OTP Verification",
-      html: `<p>Your OTP is <b>${otp}</b>. It is valid for 5 minutes.</p>`,
-    };
-
-     await transporter.sendMail(mailOptions);
+    await sendOTPEmail(email, otp);
     
 
     res.status(200).json({ message: "OTP sent to email." });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Failed to send OTP." });
+    res.status(500).json({
+      message: "Failed to send OTP.",
+      ...(process.env.NODE_ENV !== "production" ? { error: err.message } : {}),
+    });
   }
 });
 
@@ -128,7 +119,7 @@ router.post("/signup-verify", async (req, res) => {
       password: hashedPassword,
       isVerified: true,
       role: isInstituteEmail ? "dealer" : "customer",
-      profilePic: profilePic || "https://res.cloudinary.com/demo/image/upload/v1718040000/default_profile.png" // fallback
+      ...(profilePic ? { profilePic } : {})
     });
 
     await newUser.save();
@@ -200,6 +191,153 @@ router.post('/signin',async(req,res)=>{
   }
 
 });
+
+router.post('/forgot-password-request', async (req, res) => {
+  const forgotPasswordSchema = z.object({
+    email: z.string().email("Invalid email format").max(100, "Email is too long"),
+  });
+
+  const result = forgotPasswordSchema.safeParse(req.body);
+
+  if (!result.success) {
+    const errorMessage = result.error.errors[0].message;
+    return res.status(400).json({ message: errorMessage });
+  }
+
+  const { email } = result.data;
+  const now = Date.now();
+  const lastRequestTime = passwordResetRateLimitMap.get(email);
+  const COOLDOWN = 2 * 60 * 1000;
+
+  if (lastRequestTime && now - lastRequestTime < COOLDOWN) {
+    const waitTime = Math.ceil((COOLDOWN - (now - lastRequestTime)) / 1000);
+    return res.status(429).json({ message: `Please wait ${waitTime} seconds before requesting another OTP.` });
+  }
+
+  try {
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(400).json({ message: "No account found with this email" });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiry = Date.now() + 10 * 60 * 1000;
+    const resetToken = crypto.randomBytes(32).toString("hex");
+
+    passwordResetStore.set(email, {
+      otp,
+      otpExpiry,
+      verified: false,
+      resetToken,
+    });
+    passwordResetRateLimitMap.set(email, now);
+
+    await sendOTPEmail(email, otp, {
+      subject: "Password Reset OTP",
+      messageText: "Your password reset OTP is",
+      expiryText: "It expires in 10 minutes.",
+    });
+
+    return res.status(200).json({ message: "OTP sent to email." });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      message: "Failed to send reset OTP.",
+      ...(process.env.NODE_ENV !== "production" ? { error: err.message } : {}),
+    });
+  }
+});
+
+router.post('/forgot-password-verify', async (req, res) => {
+  const forgotPasswordVerifySchema = z.object({
+    email: z.string().email("Invalid email format").max(100, "Email is too long"),
+    otp: z.string().min(6, "OTP is required").max(6, "OTP must be 6 digits"),
+  });
+
+  const result = forgotPasswordVerifySchema.safeParse(req.body);
+
+  if (!result.success) {
+    const errorMessage = result.error.errors[0].message;
+    return res.status(400).json({ message: errorMessage });
+  }
+
+  const { email, otp } = result.data;
+  const record = passwordResetStore.get(email);
+
+  if (!record) {
+    return res.status(400).json({ message: "OTP not requested for this email" });
+  }
+
+  if (Date.now() > record.otpExpiry) {
+    passwordResetStore.delete(email);
+    return res.status(400).json({ message: "OTP has expired" });
+  }
+
+  if (otp !== record.otp) {
+    return res.status(400).json({ message: "Invalid OTP" });
+  }
+
+  record.verified = true;
+  passwordResetStore.set(email, record);
+
+  return res.status(200).json({
+    message: "OTP verified successfully",
+    resetToken: record.resetToken,
+  });
+});
+
+router.post('/reset-password', async (req, res) => {
+  const resetPasswordSchema = z.object({
+    email: z.string().email("Invalid email format").max(100, "Email is too long"),
+    resetToken: z.string().min(10, "Reset token is required"),
+    password: z.string().min(3, "Password must be at least 3 characters").max(50, "Password must be at most 50 characters"),
+  });
+
+  const result = resetPasswordSchema.safeParse(req.body);
+
+  if (!result.success) {
+    const errorMessage = result.error.errors[0].message;
+    return res.status(400).json({ message: errorMessage });
+  }
+
+  const { email, resetToken, password } = result.data;
+  const record = passwordResetStore.get(email);
+
+  if (!record) {
+    return res.status(400).json({ message: "Password reset session not found" });
+  }
+
+  if (!record.verified) {
+    return res.status(400).json({ message: "OTP must be verified first" });
+  }
+
+  if (record.resetToken !== resetToken) {
+    return res.status(400).json({ message: "Invalid reset session" });
+  }
+
+  if (Date.now() > record.otpExpiry) {
+    passwordResetStore.delete(email);
+    return res.status(400).json({ message: "Reset session expired" });
+  }
+
+  try {
+    const hashedPassword = await bcrypt.hash(password, 5);
+
+    await User.findOneAndUpdate(
+      { email },
+      { password: hashedPassword }
+    );
+
+    passwordResetStore.delete(email);
+
+    return res.status(200).json({ message: "Password updated successfully" });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Failed to reset password" });
+  }
+});
+
 router.delete("/", userAuth, async (req, res) => {
   try {
     const { userId } = req.user;

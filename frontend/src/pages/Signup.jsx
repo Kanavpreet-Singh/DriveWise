@@ -12,6 +12,7 @@ const Signup = () => {
   const [otp, setOtp] = useState('');
   const [showOtpField, setShowOtpField] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [useProfilePic, setUseProfilePic] = useState(false);
   const [profileMethod, setProfileMethod] = useState('url'); // 'url' or 'file'
   const [imageFile, setImageFile] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -60,20 +61,33 @@ const Signup = () => {
   setIsLoading(true);
 
   try {
-    let profilePicUrl = formData.profilePic;
+    let profilePicUrl;
 
-    if (profileMethod === 'file' && imageFile) {
-      profilePicUrl = await uploadToCloudinary();
+    if (useProfilePic) {
+      if (profileMethod === 'file') {
+        if (!imageFile) {
+          toast.error('Please choose an image file or turn off profile picture.');
+          return;
+        }
+
+        profilePicUrl = await uploadToCloudinary();
+      } else if (formData.profilePic.trim()) {
+        profilePicUrl = formData.profilePic.trim();
+      } else {
+        toast.error('Please enter an image URL or turn off profile picture.');
+        return;
+      }
     }
 
     const { username, email, password } = formData;
 
-    const response = await axios.post(`${backend_url}/user/signup-request`, {
-      username,
-      email,
-      password,
-      profilePic: profilePicUrl
-    });
+    const payload = { username, email, password };
+
+    if (profilePicUrl) {
+      payload.profilePic = profilePicUrl;
+    }
+
+    const response = await axios.post(`${backend_url}/user/signup-request`, payload);
 
     toast.success(response.data.message);
     setShowOtpField(true);
@@ -153,39 +167,55 @@ const Signup = () => {
             </div>
 
             <div className="space-y-2">
-            <label className="block text-[#14213D] text-sm font-medium">Profile Picture</label>
-            
-            <select
-              value={profileMethod}
-              onChange={(e) => setProfileMethod(e.target.value)}
-              className="w-full border px-3 py-2 rounded"
-            >
-              <option value="url">Enter Image URL</option>
-              <option value="file">Upload Image File</option>
-            </select>
+              <label className="flex items-center gap-2 text-[#14213D] text-sm font-medium">
+                <input
+                  type="checkbox"
+                  checked={useProfilePic}
+                  onChange={(e) => {
+                    setUseProfilePic(e.target.checked);
+                    if (!e.target.checked) {
+                      setProfileMethod('url');
+                      setImageFile(null);
+                      setFormData(prev => ({ ...prev, profilePic: '' }));
+                    }
+                  }}
+                />
+                Add profile picture (optional)
+              </label>
 
-            {profileMethod === 'url' ? (
-              <input
-                type="text"
-                name="profilePic"
-                placeholder="Paste image URL"
-                value={formData.profilePic}
-                onChange={handleChange}
-                className="w-full px-4 py-3 rounded border border-[#E5E5E5]"
-                required
-              />
-            ) : (
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setImageFile(e.target.files[0])}
-                className="w-full px-4 py-3 rounded border border-[#E5E5E5]"
-                required
-              />
-            )}
+              {useProfilePic && (
+                <>
+                  <select
+                    value={profileMethod}
+                    onChange={(e) => setProfileMethod(e.target.value)}
+                    className="w-full border px-3 py-2 rounded"
+                  >
+                    <option value="url">Enter Image URL</option>
+                    <option value="file">Upload Image File</option>
+                  </select>
 
-            {uploading && <p className="text-sm text-gray-500">Uploading image...</p>}
-          </div>
+                  {profileMethod === 'url' ? (
+                    <input
+                      type="text"
+                      name="profilePic"
+                      placeholder="Paste image URL"
+                      value={formData.profilePic}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 rounded border border-[#E5E5E5]"
+                    />
+                  ) : (
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setImageFile(e.target.files[0] || null)}
+                      className="w-full px-4 py-3 rounded border border-[#E5E5E5]"
+                    />
+                  )}
+
+                  {uploading && <p className="text-sm text-gray-500">Uploading image...</p>}
+                </>
+              )}
+            </div>
 
             
             <button

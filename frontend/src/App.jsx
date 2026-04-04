@@ -6,6 +6,8 @@ import 'react-toastify/dist/ReactToastify.css';
 
 import Signup from "./pages/Signup";
 import Signin from "./pages/Signin";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import DealerProfile from "./pages/DealerProfile";
 import CustomerProfile from "./pages/CustomerProfile";
 import Catalogue from "./pages/Catalogue";
@@ -69,6 +71,8 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/signin" element={<Signin />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/catalogue" element={<Catalogue />} />
         <Route path="/addcar" element={<AddCar />} />
         <Route path="/catalogue/:carId" element={<CarDetails />} />

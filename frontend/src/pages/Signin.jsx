@@ -3,6 +3,7 @@ import axios from "axios";
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { Link } from 'react-router-dom';
 
 const backend_url = import.meta.env.VITE_BACKEND_URL;
 
@@ -87,12 +88,18 @@ const Signin = () => {
             {isLoading ? 'Signing In...' : 'Sign In'}
           </button>
         </form>
+
+        <div className="text-right mt-3">
+          <Link to="/forgot-password" className="text-sm text-[#14213D] hover:underline">
+            Forgot password?
+          </Link>
+        </div>
         
         <p className="text-[#14213D] text-sm text-center mt-6">
           Don't have an account?{' '}
-          <a href="/signup" className="text-[#FCA311] font-semibold hover:underline">
+          <Link to="/signup" className="text-[#FCA311] font-semibold hover:underline">
             Sign up
-          </a>
+          </Link>
         </p>
       </div>
     </div>

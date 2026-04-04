@@ -131,15 +131,26 @@ if (!isNaN(min) && !isNaN(max)) {
     const res = await fetch(`${backend_url}/car/requestedcars?q=${encodeURIComponent(requestText)}`, {
   method: "GET", 
 });
+const data = await res.json().catch(() => ({}));
 
 if (!res.ok) {
-  throw new Error("Backend request failed");
+  const backendMessage = data?.message || "Unable to complete smart search right now.";
+  const isGeminiFailure =
+    data?.code === "GEMINI_KEY_ERROR" ||
+    /gemini|api\s*key|expired|invalid|unauthori|forbidden|permission/i.test(backendMessage);
+
+  if (isGeminiFailure) {
+    throw new Error("Smart search is unavailable right now. Please use filter-based search.");
+  }
+
+  throw new Error(backendMessage);
 }
 
-const data = await res.json();
-setCars(data);
+setCars(Array.isArray(data) ? data : []);
   } catch (err) {
-    setErrorMessage("⚠️ Could not fetch recommended cars. Please try again later.");
+    const message = err?.message || "Could not fetch recommended cars. Please try again later.";
+    setErrorMessage(message);
+    toast.error(message);
     setCars([]); 
   }
   finally {

@@ -38,42 +38,63 @@ router.get("/requestedcars", async (req, res) => {
     }
 
     // Ask Gemini
-    const response = await ai.models.generateContent({
-  model: "gemini-2.5-flash",
-  contents: `
+    let response;
+    try {
+      response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: `
     Extract car filters from the natural language query into JSON only.
     Input query: "${userQuery}"
   `,
-  config: {
-    responseMimeType: "application/json",
-    responseSchema: {
-      type: "object",
-      properties: {
-        brand: { type: "string", enum: ["Toyota", "Hyundai", "Suzuki", "Honda", "Tata", "Mahindra", "Kia", "BMW", "Mercedes-Benz", "Audi", "Tesla", "Volkswagen", "null"] },
-        minPrice: { type: "integer", nullable: true },
-        maxPrice: { type: "integer", nullable: true },
-        category: { type: "string", enum: ["Hatchback", "Sedan", "SUV", "Luxury", "Super Luxury", "null"] },
-        fuelType: { type: "string", enum: ["Petrol", "Diesel", "CNG", "Electric", "Hybrid", "null"] },
-        transmission: { type: "string", enum: ["Manual", "Automatic", "null"] },
-        year: { type: "integer", nullable: true },
-        seats: { type: "integer", nullable: true },
-        colorOptions: { type: "array", items: { type: "string" } }
-        
-      },
-      required: ["brand", "minPrice", "maxPrice", "category", "fuelType", "transmission", "year", "seats", "colorOptions"],
-      additionalProperties: false
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "object",
+            properties: {
+              brand: { type: "string", enum: ["Toyota", "Hyundai", "Suzuki", "Honda", "Tata", "Mahindra", "Kia", "BMW", "Mercedes-Benz", "Audi", "Tesla", "Volkswagen", "null"] },
+              minPrice: { type: "integer", nullable: true },
+              maxPrice: { type: "integer", nullable: true },
+              category: { type: "string", enum: ["Hatchback", "Sedan", "SUV", "Luxury", "Super Luxury", "null"] },
+              fuelType: { type: "string", enum: ["Petrol", "Diesel", "CNG", "Electric", "Hybrid", "null"] },
+              transmission: { type: "string", enum: ["Manual", "Automatic", "null"] },
+              year: { type: "integer", nullable: true },
+              seats: { type: "integer", nullable: true },
+              colorOptions: { type: "array", items: { type: "string" } }
+            },
+            required: ["brand", "minPrice", "maxPrice", "category", "fuelType", "transmission", "year", "seats", "colorOptions"],
+            additionalProperties: false
+          }
+        }
+      });
+    } catch (error) {
+      const aiErrorMessage = error?.message || "";
+      const aiErrorStatus = Number(error?.status || error?.code || 0);
+      const isGeminiKeyIssue =
+        aiErrorStatus === 401 ||
+        aiErrorStatus === 403 ||
+        /api\s*key|invalid|expired|unauthori|forbidden|permission/i.test(aiErrorMessage);
+
+      if (isGeminiKeyIssue) {
+        return res.status(503).json({
+          code: "GEMINI_KEY_ERROR",
+          message: "AI smart search is unavailable right now. Please use filter-based search.",
+        });
+      }
+
+      return res.status(502).json({
+        code: "GEMINI_SERVICE_ERROR",
+        message: "AI smart search is temporarily unavailable. Please try again later.",
+      });
     }
-  }
-});
-    
-    const text=response.text;
+
+    const text = response.text?.trim?.() || "";
 
     // Parse JSON safely
     let filters;
     try {
       filters = JSON.parse(text);
     } catch (parseErr) {
-      console.error("Failed to parse Gemini response:", rawText);
+      console.error("Failed to parse Gemini response:", text);
       return res.status(500).json({ message: "Invalid AI response format" });
     }
 

@@ -12,6 +12,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@getbrevo/brevo": "^5.0.3",
     "@google/genai": "^1.15.0",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
@@ -20,7 +21,6 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.15.1",
     "nodemon": "^3.1.10",
-    "resend": "^6.10.0",
     "socket.io": "^4.8.1",
     "zod": "^3.25.63"
   }

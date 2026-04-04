@@ -1,25 +1,26 @@
-const { Resend } = require("resend");
+const { BrevoClient } = require("@getbrevo/brevo");
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const brevo = new BrevoClient({
+  apiKey: process.env.BREVO_API_KEY,
+});
 
 const sendOTPEmail = async (toEmail, otp, options = {}) => {
   const subject = options.subject || "OTP Verification";
   const messageText = options.messageText || "Your OTP is";
   const expiryText = options.expiryText || "It is valid for 5 minutes.";
-  const fromEmail = "DriveWise <onboarding@resend.dev>";
-  const replyToEmail = process.env.EMAIL_USER;
+  const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER;
+  const senderName = process.env.BREVO_SENDER_NAME || "DriveWise";
 
-  const result = await resend.emails.send({
-    from: fromEmail,
-    to: toEmail,
-    subject,
-    html: `<p>${messageText} <strong>${otp}</strong>. ${expiryText}</p>`,
-    ...(replyToEmail ? { replyTo: replyToEmail } : {}),
-  });
-
-  if (result?.error) {
-    throw new Error(`Resend error (${result.error.statusCode}): ${result.error.message}`);
+  if (!senderEmail) {
+    throw new Error("Brevo sender email is missing. Set BREVO_SENDER_EMAIL in backend env.");
   }
+
+  const result = await brevo.transactionalEmails.sendTransacEmail({
+    sender: { email: senderEmail, name: senderName },
+    to: [{ email: toEmail }],
+    subject,
+    htmlContent: `<p>${messageText} <strong>${otp}</strong>. ${expiryText}</p>`,
+  });
 
   return result;
 };

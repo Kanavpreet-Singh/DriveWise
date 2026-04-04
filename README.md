@@ -38,7 +38,7 @@
 
 ### 🔐 Secure Authentication
 - **JWT-based authentication** for protected routes.
-- **OTP verification** via email using **NodeMailer** for secure account access.
+- **OTP verification** via email using **Brevo transactional API** for secure account access.
 - Password-based login and registration with full validation.
 
 ### 💻 Fully Responsive UI
@@ -53,7 +53,7 @@
 | **Frontend** | React, Tailwind CSS, Vite                                          |
 | **Backend**  | Node.js, Express.js                                                |
 | **Database** | MongoDB with Mongoose                                              |
-| **Auth**     | JWT, NodeMailer (for OTP verification), bcrypt                     |
+| **Auth**     | JWT, Brevo API (for OTP verification), bcrypt                      |
 | **Real-Time**| Socket.IO                                                          |
 | **ML**       | Custom Python model integrated through API                         |
 | **Cloud**    | Cloudinary (image uploads), Geolocation using MongoDB Geo Queries  |

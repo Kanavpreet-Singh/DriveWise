@@ -4,9 +4,193 @@ const  Comment  = require("../models/Comment");
 const { GoogleGenAI } = require("@google/genai");
 const userAuth = require("../middleware/authentication/user");
 const  User  = require("../models/User");
+const CarImageUploadJob = require("../models/CarImageUploadJob");
+const redis = require("../redisClient");
+const { carImageQueue } = require("../queues/carImageQueue");
 const router = express.Router();
 
 require("dotenv").config();
+
+const CAR_LIST_CACHE_PREFIX = "cars:list:";
+const CAR_DETAIL_CACHE_PREFIX = "cars:detail:";
+const CAR_CACHE_TTL_SECONDS = Number(process.env.REDIS_CAR_CACHE_TTL || 0);
+const cloudName = (process.env.CLOUDINARY_CLOUD_NAME || "").trim();
+const uploadPreset = (process.env.CLOUDINARY_UPLOAD_PRESET || "").trim();
+
+const buildListCacheKey = (filters) => {
+  const sortedEntries = Object.entries(filters).sort(([a], [b]) => a.localeCompare(b));
+  return `${CAR_LIST_CACHE_PREFIX}${JSON.stringify(Object.fromEntries(sortedEntries))}`;
+};
+
+const buildDetailCacheKey = (carId) => `${CAR_DETAIL_CACHE_PREFIX}${carId}`;
+
+const setCacheValue = async (key, payload) => {
+  const value = JSON.stringify(payload);
+
+  // TTL = 0 means keep forever until explicit invalidation.
+  if (CAR_CACHE_TTL_SECONDS > 0) {
+    await redis.set(key, value, "EX", CAR_CACHE_TTL_SECONDS);
+    return;
+  }
+
+  await redis.set(key, value);
+};
+
+const invalidateCarListCaches = async () => {
+  let cursor = "0";
+
+  do {
+    const [nextCursor, keys] = await redis.scan(cursor, "MATCH", `${CAR_LIST_CACHE_PREFIX}*`, "COUNT", 100);
+    cursor = nextCursor;
+
+    if (keys.length > 0) {
+      await redis.del(...keys);
+    }
+  } while (cursor !== "0");
+};
+
+const invalidateCarCaches = async (carId) => {
+  await invalidateCarListCaches();
+
+  if (carId) {
+    await redis.del(buildDetailCacheKey(carId));
+  }
+};
+
+const buildImagePublicId = (carId, index) => `drivewise/cars/${carId}/image-${index + 1}`;
+
+const uploadImagePayloadToCloudinary = async (fileInput, carId, index) => {
+  const formData = new FormData();
+  formData.append("file", fileInput);
+  formData.append("upload_preset", uploadPreset);
+  formData.append("public_id", buildImagePublicId(carId, index));
+
+  const response = await fetch(
+    `https://api.cloudinary.com/v1_1/${cloudName}/upload`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
+
+  const result = await response.json();
+  if (!response.ok || !result.secure_url) {
+    throw new Error(result?.error?.message || `Cloudinary upload failed for image ${index + 1}`);
+  }
+
+  return result.secure_url;
+};
+
+const fallbackUploadImages = async ({ carId, imagePayloads, payloadDocId }) => {
+  const uploadedImages = [];
+  const failures = [];
+
+  for (let i = 0; i < imagePayloads.length; i++) {
+    // Mark this image as uploading
+    if (payloadDocId) {
+      await CarImageUploadJob.updateOne(
+        { _id: payloadDocId, 'imageStatuses.index': i },
+        { $set: { 'imageStatuses.$.status': 'uploading' } }
+      );
+    }
+
+    try {
+      const url = await uploadImagePayloadToCloudinary(imagePayloads[i], carId, i);
+      uploadedImages.push(url);
+
+      if (payloadDocId) {
+        await CarImageUploadJob.updateOne(
+          { _id: payloadDocId, 'imageStatuses.index': i },
+          { $set: { 'imageStatuses.$.status': 'completed' } }
+        );
+      }
+    } catch (err) {
+      const errMsg = err.message || 'unknown error';
+      failures.push(`image ${i + 1}: ${errMsg}`);
+
+      if (payloadDocId) {
+        await CarImageUploadJob.updateOne(
+          { _id: payloadDocId, 'imageStatuses.index': i },
+          { $set: { 'imageStatuses.$.status': 'failed', 'imageStatuses.$.error': errMsg } }
+        );
+      }
+    }
+  }
+
+  return { uploadedImages, failures };
+};
+
+const runFallbackUploadInBackground = ({ carId, payloadDocId, fallbackReason }) => {
+  setImmediate(async () => {
+    try {
+      const payloadDoc = await CarImageUploadJob.findById(payloadDocId);
+      if (!payloadDoc || !Array.isArray(payloadDoc.imagePayloads) || payloadDoc.imagePayloads.length === 0) {
+        await Car.findByIdAndUpdate(carId, {
+          imageProcessingStatus: 'failed',
+          imageProcessingError: `Fallback payload missing: ${fallbackReason}`,
+        });
+        return;
+      }
+
+      await Car.findByIdAndUpdate(carId, {
+        imageProcessingStatus: 'processing',
+        imageProcessingError: null,
+        imageJobId: null,
+      });
+
+      payloadDoc.status = 'processing';
+      payloadDoc.error = null;
+      await payloadDoc.save();
+
+      const { uploadedImages, failures } = await fallbackUploadImages({
+        carId,
+        imagePayloads: payloadDoc.imagePayloads,
+        payloadDocId,
+      });
+
+      const keptImages = Array.isArray(payloadDoc.keepExistingImages)
+        ? payloadDoc.keepExistingImages
+        : [];
+      const finalImages = [...keptImages, ...uploadedImages];
+
+      const nextStatus = failures.length > 0 ? 'failed' : 'completed';
+      const nextError =
+        failures.length > 0
+          ? `Partial upload failure (${uploadedImages.length}/${payloadDoc.imagePayloads.length}). ${failures.join(' | ')}`
+          : null;
+
+      await Car.findByIdAndUpdate(carId, {
+        image: finalImages,
+        imageProcessingStatus: nextStatus,
+        imageProcessingError: nextError,
+      });
+
+      payloadDoc.status = nextStatus;
+      payloadDoc.error = nextError;
+      if (nextStatus === 'completed') {
+        payloadDoc.imagePayloads = [];
+        payloadDoc.keepExistingImages = [];
+      }
+      await payloadDoc.save();
+
+      await invalidateCarCaches(carId);
+    } catch (error) {
+      await Car.findByIdAndUpdate(carId, {
+        imageProcessingStatus: 'failed',
+        imageProcessingError: `Fallback upload failed: ${error.message}`,
+      });
+      await CarImageUploadJob.findByIdAndUpdate(payloadDocId, {
+        status: 'failed',
+        error: error.message,
+      });
+      try {
+        await invalidateCarCaches(carId);
+      } catch (cacheInvalidationError) {
+        console.error('Redis invalidation error (/car/add fallback failure):', cacheInvalidationError.message);
+      }
+    }
+  });
+};
 
 router.get('/allcars', async (req, res) => {
   try {
@@ -18,8 +202,31 @@ router.get('/allcars', async (req, res) => {
       }
     });
 
+    const cacheKey = buildListCacheKey(filters);
+
+    try {
+      const cachedCars = await redis.get(cacheKey);
+      if (cachedCars) {
+        console.log("CACHE HIT: /car/allcars", cacheKey);
+        res.set("X-Cache-Source", "REDIS");
+        return res.status(200).json(JSON.parse(cachedCars));
+      }
+      console.log("CACHE MISS: /car/allcars", cacheKey);
+    } catch (cacheReadError) {
+      console.error("Redis read error (/allcars):", cacheReadError.message);
+    }
+
     const cars = await Car.find(filters);
-    res.status(200).json({ cars });
+    const responsePayload = { cars };
+
+    try {
+      await setCacheValue(cacheKey, responsePayload);
+    } catch (cacheWriteError) {
+      console.error("Redis write error (/allcars):", cacheWriteError.message);
+    }
+
+    res.set("X-Cache-Source", "DB");
+    res.status(200).json(responsePayload);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -170,17 +377,22 @@ router.post('/add', userAuth, async (req, res) => {
     transmission,
     year,
     seats,
-    image,
+    imagePayloads,
+    imageFileNames,
     location 
   } = req.body;
 
-  if (!name || !brand || !price || !category || !image || !location) {
+  if (!name || !brand || !price || !category || !location) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
 
-  if (!Array.isArray(image) || image.length < 2 || image.length > 3) {
-  return res.status(400).json({ message: 'Please provide 2 to 3 images' });
-}
+  if (!Array.isArray(imagePayloads) || imagePayloads.length < 2) {
+    return res.status(400).json({ message: 'Please provide at least 2 images' });
+  }
+
+  if (imagePayloads.length > 10) {
+    return res.status(400).json({ message: 'Maximum 10 images allowed' });
+  }
 
 
   try {
@@ -193,7 +405,9 @@ router.post('/add', userAuth, async (req, res) => {
       transmission,
       year,
       seats,
-      image,
+      image: [],
+      imageProcessingStatus: 'queued',
+      imageProcessingError: null,
       colorOptions: ['white', 'black'],
       listedby: req.user.userId,
       location: {
@@ -204,8 +418,89 @@ router.post('/add', userAuth, async (req, res) => {
 
     await newCar.save();
 
+    const carId = newCar._id.toString();
+
+    const payloadDoc = await CarImageUploadJob.create({
+      carId,
+      imagePayloads,
+      keepExistingImages: [],
+      imageStatuses: imagePayloads.map((_, i) => ({
+        index: i,
+        fileName: Array.isArray(imageFileNames) && imageFileNames[i] ? imageFileNames[i] : `Image ${i + 1}`,
+        status: 'queued',
+        error: null,
+      })),
+      status: 'queued',
+      error: null,
+    });
+
+    const runFallbackResponse = async (fallbackReason) => {
+      if (!cloudName || !uploadPreset) {
+        await Car.findByIdAndUpdate(carId, {
+          imageProcessingStatus: 'failed',
+          imageProcessingError: `Fallback unavailable: ${fallbackReason}`,
+        });
+        return res.status(503).json({
+          message: 'Car added but image processing is unavailable right now.',
+          fallbackUsed: false,
+          car: await Car.findById(carId),
+        });
+      }
+
+      runFallbackUploadInBackground({ carId, payloadDocId: payloadDoc._id.toString(), fallbackReason });
+
+      return res.status(202).json({
+        message: 'Car added. Image processing started in background via backend fallback.',
+        fallbackUsed: true,
+        car: await Car.findById(carId),
+      });
+    };
+
+    let activeWorkers = 0;
+    try {
+      activeWorkers = await carImageQueue.getWorkersCount();
+    } catch (workerCheckError) {
+      console.error('Worker count check failed:', workerCheckError.message);
+    }
+
+    if (activeWorkers === 0) {
+      return await runFallbackResponse('No active BullMQ worker');
+    }
+
+    try {
+      const job = await carImageQueue.add(
+        'car-images-upload',
+        {
+          carId,
+          userId: req.user.userId,
+          payloadDocId: payloadDoc._id.toString(),
+        },
+        {
+          jobId: `car-images-${payloadDoc._id.toString()}`,
+        }
+      );
+
+      newCar.imageJobId = job.id?.toString?.() || null;
+      await newCar.save();
+
+      await CarImageUploadJob.findByIdAndUpdate(payloadDoc._id, {
+        status: 'queued',
+        error: null,
+      });
+    } catch (enqueueError) {
+      console.error('Queue enqueue failed, using fallback upload:', enqueueError.message);
+      return await runFallbackResponse('Queue enqueue failed');
+    }
+
+    try {
+      await invalidateCarCaches(carId);
+    } catch (cacheInvalidationError) {
+      console.error("Redis invalidation error (/car/add):", cacheInvalidationError.message);
+    }
+
     res.status(200).json({
-      message: 'Car added successfully',
+      message: 'Car added. Images are being processed in background.',
+      imageJobId: newCar.imageJobId,
       car: newCar,
     });
   } catch (error) {
@@ -214,11 +509,67 @@ router.post('/add', userAuth, async (req, res) => {
   }
 });
 
+router.get('/image-status/:id', userAuth, async (req, res) => {
+  try {
+    const car = await Car.findById(req.params.id).select(
+      'listedby image imageProcessingStatus imageProcessingError imageJobId'
+    );
+
+    if (!car) {
+      return res.status(404).json({ message: 'Car not found' });
+    }
+
+    if (car.listedby.toString() !== req.user.userId) {
+      return res.status(403).json({ message: 'Unauthorized' });
+    }
+
+    // Get the latest upload job for per-image statuses
+    const latestJob = await CarImageUploadJob.findOne({ carId: req.params.id })
+      .sort({ createdAt: -1 })
+      .select('imageStatuses status error');
+
+    return res.status(200).json({
+      status: car.imageProcessingStatus,
+      error: car.imageProcessingError,
+      imageCount: car.image.length,
+      imageJobId: car.imageJobId,
+      imageStatuses: latestJob?.imageStatuses || [],
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to fetch image processing status' });
+  }
+});
+
 router.get('/:id', async (req, res) => {
   try {
-    const car = await Car.findById(req.params.id);
+    const carId = req.params.id;
+    const cacheKey = buildDetailCacheKey(carId);
+
+    try {
+      const cachedCar = await redis.get(cacheKey);
+      if (cachedCar) {
+        console.log("CACHE HIT: /car/:id", cacheKey);
+        res.set("X-Cache-Source", "REDIS");
+        return res.status(200).json(JSON.parse(cachedCar));
+      }
+      console.log("CACHE MISS: /car/:id", cacheKey);
+    } catch (cacheReadError) {
+      console.error("Redis read error (/car/:id):", cacheReadError.message);
+    }
+
+    const car = await Car.findById(carId);
     if (!car) return res.status(404).json({ message: "Car not found" });
-    res.status(200).json({ car });
+
+    const responsePayload = { car };
+
+    try {
+      await setCacheValue(cacheKey, responsePayload);
+    } catch (cacheWriteError) {
+      console.error("Redis write error (/car/:id):", cacheWriteError.message);
+    }
+
+    res.set("X-Cache-Source", "DB");
+    res.status(200).json(responsePayload);
   } catch (err) {
     res.status(500).json({ message: "Error fetching car" });
   }
@@ -235,7 +586,9 @@ router.post('/:id', userAuth, async (req, res) => {
       transmission,
       year,
       seats,
-      image,
+      keepImages,
+      newImagePayloads,
+      newImageFileNames,
     } = req.body;
 
     const carId = req.params.id;
@@ -250,20 +603,131 @@ router.post('/:id', userAuth, async (req, res) => {
       return res.status(403).json({ message: 'Unauthorized to edit this car' });
     }
 
-    
+    const safeKeepImages = Array.isArray(keepImages) ? keepImages.filter(Boolean) : [];
+    const safeNewImagePayloads = Array.isArray(newImagePayloads)
+      ? newImagePayloads.filter((payload) => typeof payload === 'string' && payload.trim())
+      : [];
+
+    const totalFinalImages = safeKeepImages.length + safeNewImagePayloads.length;
+    if (totalFinalImages < 2) {
+      return res.status(400).json({ message: 'Please keep or upload at least 2 images in total.' });
+    }
+
+    if (totalFinalImages > 10) {
+      return res.status(400).json({ message: 'Maximum 10 images allowed.' });
+    }
+
     car.name = name;
     car.brand = brand;
-    car.price=price;
+    car.price = price;
     car.category = category;
     car.fuelType = fuelType;
     car.transmission = transmission;
     car.year = year;
     car.seats = seats;
-    car.image = image;
 
+    if (safeNewImagePayloads.length === 0) {
+      car.image = safeKeepImages;
+      car.imageProcessingStatus = 'completed';
+      car.imageProcessingError = null;
+      car.imageJobId = null;
+      await car.save();
+
+      try {
+        await invalidateCarCaches(carId);
+      } catch (cacheInvalidationError) {
+        console.error("Redis invalidation error (/car/:id update no-queue):", cacheInvalidationError.message);
+      }
+
+      return res.status(200).json({ message: 'Car updated successfully', car });
+    }
+
+    car.image = safeKeepImages;
+    car.imageProcessingStatus = 'queued';
+    car.imageProcessingError = null;
     await car.save();
 
-    res.status(200).json({ message: 'Car updated successfully', car });
+    const payloadDoc = await CarImageUploadJob.create({
+      carId,
+      imagePayloads: safeNewImagePayloads,
+      keepExistingImages: safeKeepImages,
+      imageStatuses: safeNewImagePayloads.map((_, i) => ({
+        index: i,
+        fileName: Array.isArray(newImageFileNames) && newImageFileNames[i] ? newImageFileNames[i] : `Image ${i + 1}`,
+        status: 'queued',
+        error: null,
+      })),
+      status: 'queued',
+      error: null,
+    });
+
+    const runEditFallbackResponse = async (fallbackReason) => {
+      if (!cloudName || !uploadPreset) {
+        await Car.findByIdAndUpdate(carId, {
+          imageProcessingStatus: 'failed',
+          imageProcessingError: `Fallback unavailable: ${fallbackReason}`,
+        });
+        return res.status(503).json({
+          message: 'Car updated but image processing is unavailable right now.',
+          fallbackUsed: false,
+          car: await Car.findById(carId),
+        });
+      }
+
+      runFallbackUploadInBackground({
+        carId,
+        payloadDocId: payloadDoc._id.toString(),
+        fallbackReason,
+      });
+
+      return res.status(202).json({
+        message: 'Car updated. New images are processing in background.',
+        fallbackUsed: true,
+        car: await Car.findById(carId),
+      });
+    };
+
+    let activeWorkers = 0;
+    try {
+      activeWorkers = await carImageQueue.getWorkersCount();
+    } catch (workerCheckError) {
+      console.error('Worker count check failed (edit):', workerCheckError.message);
+    }
+
+    if (activeWorkers === 0) {
+      return await runEditFallbackResponse('No active BullMQ worker');
+    }
+
+    try {
+      const job = await carImageQueue.add(
+        'car-images-upload',
+        {
+          carId,
+          userId: req.user.userId,
+          payloadDocId: payloadDoc._id.toString(),
+        },
+        {
+          jobId: `car-images-${payloadDoc._id.toString()}`,
+        }
+      );
+
+      car.imageJobId = job.id?.toString?.() || null;
+      await car.save();
+    } catch (enqueueError) {
+      console.error('Queue enqueue failed (edit), using fallback upload:', enqueueError.message);
+      return await runEditFallbackResponse('Queue enqueue failed');
+    }
+
+    try {
+      await invalidateCarCaches(carId);
+    } catch (cacheInvalidationError) {
+      console.error("Redis invalidation error (/car/:id update):", cacheInvalidationError.message);
+    }
+
+    return res.status(200).json({
+      message: 'Car updated. New images are being processed in background.',
+      car,
+    });
 
   } catch (err) {
     console.error(err);
@@ -358,6 +822,12 @@ router.delete('/:id', userAuth, async (req, res) => {
     
     await Car.findByIdAndDelete(id);
     await Comment.deleteMany({ car: id });
+
+    try {
+      await invalidateCarCaches(id);
+    } catch (cacheInvalidationError) {
+      console.error("Redis invalidation error (/car/:id delete):", cacheInvalidationError.message);
+    }
 
     res.status(200).json({ message: 'Listing deleted successfully' });
   } catch (error) {

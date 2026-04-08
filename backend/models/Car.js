@@ -30,9 +30,22 @@ const carSchema=new Schema({
   colorOptions: [String],
 
   image: {
-  type: [String], 
-  required: true,
-},
+    type: [String],
+    default: [],
+  },
+  imageProcessingStatus: {
+    type: String,
+    enum: ["pending", "queued", "processing", "completed", "failed"],
+    default: "pending",
+  },
+  imageProcessingError: {
+    type: String,
+    default: null,
+  },
+  imageJobId: {
+    type: String,
+    default: null,
+  },
 
   listedby:{
     type:Schema.Types.ObjectId,

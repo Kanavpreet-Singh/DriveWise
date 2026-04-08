@@ -1,0 +1,24 @@
+{
+  "name": "drivewise-worker",
+  "version": "1.0.0",
+  "description": "Standalone BullMQ worker service for DriveWise messaging queues",
+  "main": "messagingQueueWorker.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node messagingQueueWorker.js",
+    "dev": "node messagingQueueWorker.js"
+  },
+  "keywords": [
+    "bullmq",
+    "redis",
+    "worker"
+  ],
+  "license": "ISC",
+  "dependencies": {
+    "backend": "file:../backend",
+    "bullmq": "^5.73.0",
+    "dotenv": "^16.6.1",
+    "ioredis": "^5.10.1",
+    "mongoose": "^9.4.1"
+  }
+}

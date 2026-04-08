@@ -3,12 +3,14 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useUploadTracker } from '../context/UploadTrackerContext';
 
 const EditCar = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams();
   const backend_url = import.meta.env.VITE_BACKEND_URL;
+  const { addUploadJob } = useUploadTracker();
 
   const [formData, setFormData] = useState({
     name: '',
@@ -19,8 +21,10 @@ const EditCar = () => {
     transmission: '',
     year: '',
     seats: '',
-    images: [{ type: 'url', value: '' }],
   });
+  const [existingImages, setExistingImages] = useState([]);
+  const [newImageFiles, setNewImageFiles] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
 
   const brands = ['Toyota', 'Hyundai', 'Suzuki', 'Honda', 'Tata', 'Mahindra', 'Kia', 'BMW', 'Mercedes-Benz', 'Audi', 'Tesla', 'Volkswagen'];
   const categories = ['Hatchback', 'Sedan', 'SUV', 'Luxury', 'Super Luxury'];
@@ -42,11 +46,16 @@ const EditCar = () => {
         }
 
         setFormData({
-          ...res.data.car,
-          images: Array.isArray(res.data.car.image)
-            ? res.data.car.image.map((img) => ({ type: 'url', value: img }))
-            : [{ type: 'url', value: res.data.car.image || '' }],
+          name: res.data.car.name || '',
+          brand: res.data.car.brand || '',
+          price: res.data.car.price || '',
+          category: res.data.car.category || '',
+          fuelType: res.data.car.fuelType || '',
+          transmission: res.data.car.transmission || '',
+          year: res.data.car.year || '',
+          seats: res.data.car.seats || '',
         });
+        setExistingImages(Array.isArray(res.data.car.image) ? res.data.car.image : []);
       } catch (err) {
         toast.error('Failed to fetch car details');
         navigate('/');
@@ -69,76 +78,65 @@ const EditCar = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const addImageField = () => {
-    if (formData.images.length < 3) {
-      setFormData((prev) => ({
-        ...prev,
-        images: [...prev.images, { type: 'url', value: '' }],
-      }));
-    }
-  };
-
-  const removeImageField = (index) => {
-    if (formData.images.length > 2) {
-      const updatedImages = formData.images.filter((_, i) => i !== index);
-      setFormData((prev) => ({ ...prev, images: updatedImages }));
-    }
-  };
-
-  const uploadToCloudinary = async (file) => {
-    const data = new FormData();
-    data.append('file', file);
-    data.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
-    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/upload`, {
-      method: 'POST',
-      body: data,
+  const readFileAsDataUrl = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
     });
-
-    const json = await res.json();
-    return json.secure_url;
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const validImages = formData.images.filter((img) =>
-      img.type === 'url' ? img.value.trim() !== '' : img.value instanceof File
-    );
+    const totalImages = existingImages.length + newImageFiles.length;
+    if (totalImages < 2) {
+      toast.error('Please keep or upload at least 2 images.');
+      return;
+    }
 
-    if (validImages.length < 2) {
-      toast.error('Please provide at least 2 valid images.');
+    if (totalImages > 10) {
+      toast.error('Maximum 10 images are allowed.');
       return;
     }
 
     try {
-      const uploadedImageUrls = await Promise.all(
-        validImages.map(async (img) => {
-          if (img.type === 'file' && img.value instanceof File) {
-            return await uploadToCloudinary(img.value);
-          } else {
-            return img.value.trim();
-          }
-        })
+      setSubmitting(true);
+
+      const newImagePayloads = await Promise.all(
+        newImageFiles.map((file) => readFileAsDataUrl(file))
       );
 
       const token = localStorage.getItem('token');
       const res = await axios.post(
         `${backend_url}/car/${id}`,
         {
-          ...formData,
-          image: uploadedImageUrls,
+          name: formData.name,
+          brand: formData.brand,
+          price: formData.price,
+          category: formData.category,
+          fuelType: formData.fuelType,
+          transmission: formData.transmission,
+          year: formData.year,
+          seats: formData.seats,
+          keepImages: existingImages,
+          newImagePayloads,
+          newImageFileNames: newImageFiles.map((f) => f.name),
         },
         {
           headers: { token },
         }
       );
 
-      toast.success(res.data.message || 'Car updated successfully');
+      toast.success(res.data.message || 'Car updated. Image processing started in background.');
+      if (newImageFiles.length > 0) {
+        addUploadJob(id, formData.name || 'Car', newImageFiles.map((f) => f.name));
+      }
       navigate('/catalogue');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Update failed');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -190,82 +188,43 @@ const EditCar = () => {
         <input name="seats" type="number" placeholder="Seats" className="w-full border px-3 py-2" value={formData.seats} onChange={handleChange} />
 
         <div className="space-y-4">
-          <label className="block font-semibold text-gray-700">Images (Min 2, Max 3)</label>
-          {formData.images.map((imgObj, index) => (
-            <div key={index} className="border rounded p-3 space-y-2">
-              <div className="flex items-center gap-3">
-                <select
-                  value={imgObj.type}
-                  onChange={(e) => {
-                    const updated = [...formData.images];
-                    updated[index].type = e.target.value;
-                    updated[index].value = '';
-                    setFormData((prev) => ({ ...prev, images: updated }));
-                  }}
-                  className="border px-2 py-1"
+          <label className="block font-semibold text-gray-700">Existing Images</label>
+          <p className="text-sm text-gray-500">Remove any old image you no longer want.</p>
+          <div className="flex flex-wrap gap-3">
+            {existingImages.map((imgUrl) => (
+              <div key={imgUrl} className="relative">
+                <img src={imgUrl} alt="existing" className="h-24 rounded shadow" />
+                <button
+                  type="button"
+                  onClick={() => setExistingImages((prev) => prev.filter((url) => url !== imgUrl))}
+                  className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-6 h-6 text-xs"
                 >
-                  <option value="url">URL</option>
-                  <option value="file">File</option>
-                </select>
-
-                {formData.images.length > 2 && (
-                  <button
-                    type="button"
-                    onClick={() => removeImageField(index)}
-                    className="text-red-600 font-bold text-xl"
-                  >
-                    ✕
-                  </button>
-                )}
+                  x
+                </button>
               </div>
+            ))}
+          </div>
 
-              {imgObj.type === 'url' ? (
-                <input
-                  type="text"
-                  placeholder="Enter image URL"
-                  value={imgObj.value}
-                  onChange={(e) => {
-                    const updated = [...formData.images];
-                    updated[index].value = e.target.value;
-                    setFormData((prev) => ({ ...prev, images: updated }));
-                  }}
-                  className="w-full border px-3 py-2"
-                />
-              ) : (
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const updated = [...formData.images];
-                    updated[index].value = e.target.files[0];
-                    setFormData((prev) => ({ ...prev, images: updated }));
-                  }}
-                  className="w-full border px-3 py-2"
-                />
-              )}
+          <label className="block font-semibold text-gray-700">Add New Images</label>
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={(e) => setNewImageFiles(Array.from(e.target.files || []))}
+            className="w-full border px-3 py-2"
+          />
 
-              {imgObj.type === 'url' && imgObj.value && (
-                <img src={imgObj.value} alt="preview" className="h-24 rounded shadow" />
-              )}
-              {imgObj.type === 'file' && imgObj.value && (
-                <img src={URL.createObjectURL(imgObj.value)} alt="preview" className="h-24 rounded shadow" />
-              )}
-            </div>
-          ))}
+          <div className="flex flex-wrap gap-3">
+            {newImageFiles.map((file, index) => (
+              <img key={`${file.name}-${index}`} src={URL.createObjectURL(file)} alt="new preview" className="h-24 rounded shadow" />
+            ))}
+          </div>
 
-          {formData.images.length < 3 && (
-            <button
-              type="button"
-              onClick={addImageField}
-              className="text-blue-600 font-semibold text-sm"
-            >
-              + Add Another Image
-            </button>
-          )}
+          <p className="text-sm text-gray-500">Total images after update must be between 2 and 10.</p>
         </div>
 
-        <button type="submit" className="bg-yellow text-white px-4 py-2 rounded shadow">
-          Update Car
+        <button type="submit" className="bg-yellow text-white px-4 py-2 rounded shadow" disabled={submitting}>
+          {submitting ? 'Submitting...' : 'Update Car'}
         </button>
       </form>
     </div>

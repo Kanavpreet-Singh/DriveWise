@@ -3,6 +3,7 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useUploadTracker } from '../context/UploadTrackerContext';
 
 const cityList = [
   { name: 'Delhi', coordinates: [77.1025, 28.7041] },
@@ -30,10 +31,9 @@ const cityList = [
 const AddCar = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { addUploadJob } = useUploadTracker();
 
-  const [imageSource, setImageSource] = useState('upload');
   const [imageFiles, setImageFiles] = useState([]);
-  const [imageUrls, setImageUrls] = useState(['', '', '']);
   const [uploading, setUploading] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -71,26 +71,18 @@ const AddCar = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleFileChange = (e, index) => {
-    const files = [...imageFiles];
-    files[index] = e.target.files[0];
-    setImageFiles(files);
+  const handleFileChange = (e) => {
+    const selected = Array.from(e.target.files || []);
+    setImageFiles(selected);
   };
 
-  const uploadToCloudinary = async (file) => {
-    const data = new FormData();
-    data.append('file', file);
-    data.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
-    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/upload`, {
-      method: 'POST',
-      body: data,
+  const readFileAsDataUrl = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
     });
-
-    const json = await res.json();
-    return json.secure_url;
-  };
 
   const handleSubmit = async (e) => {
   e.preventDefault();
@@ -100,39 +92,21 @@ const AddCar = () => {
     return;
   }
 
-  // Image validation - BEFORE upload or API call
-  if (imageSource === 'upload') {
-    const validFiles = imageFiles.filter(Boolean);
-    if (validFiles.length < 2) {
-      toast.error("Please upload at least 2 images.");
-      return;
-    }
-  } else {
-    const validUrls = imageUrls.filter((url) => url.trim());
-    if (validUrls.length < 2) {
-      toast.error("Please provide at least 2 image URLs.");
-      return;
-    }
+  if (imageFiles.length < 2) {
+    toast.error('Please select at least 2 images.');
+    return;
   }
 
   try {
     setUploading(true);
-    let finalImages = [];
-
-    if (imageSource === 'upload') {
-      const uploads = await Promise.all(
-        imageFiles.filter(Boolean).map((file) => uploadToCloudinary(file))
-      );
-      finalImages = uploads;
-    } else {
-      finalImages = imageUrls.filter((url) => url.trim()).slice(0, 3);
-    }
+    const imagePayloads = await Promise.all(imageFiles.map((file) => readFileAsDataUrl(file)));
 
     const token = localStorage.getItem('token');
     const res = await axios.post(`${backend_url}/car/add`,
       {
         ...formData,
-        image: finalImages,
+        imagePayloads,
+        imageFileNames: imageFiles.map((f) => f.name),
         location: {
           type: 'Point',
           coordinates: coords
@@ -142,10 +116,13 @@ const AddCar = () => {
         headers: { token }
       });
 
-    toast.success(res.data.message);
+    toast.success('Listing saved. Image processing started in background.');
+    const carId = res.data?.car?._id;
+    if (carId) {
+      addUploadJob(carId, formData.name || 'New Car', imageFiles.map((f) => f.name));
+    }
     setFormData({ name: '', brand: '', price: '', category: '', fuelType: '', transmission: '', year: '', seats: '', image: [], location: { city: '', coordinates: [] } });
     setImageFiles([]);
-    setImageUrls(['', '', '']);
     setCityInput('');
     setUploading(false);
     navigate('/catalogue');
@@ -228,52 +205,26 @@ const AddCar = () => {
 
         
         <div className="space-y-2">
-          <label className="block font-semibold text-gray-700">Image Source</label>
-          <select className="w-full border px-3 py-2 rounded" value={imageSource} onChange={(e) => setImageSource(e.target.value)}>
-            <option value="upload">Upload Images</option>
-            <option value="url">Enter Image URLs</option>
-          </select>
-
-          {imageSource === 'upload' ? (
-            <div className="space-y-2">
-              {[0, 1, 2].map((idx) => (
-                <input key={idx} type="file" accept="image/*" onChange={(e) => handleFileChange(e, idx)} className="w-full border px-3 py-2" />
-              ))}
-              <div className="flex flex-wrap gap-3">
-                {imageFiles.filter(Boolean).map((file, i) => (
-                  <img key={i} src={URL.createObjectURL(file)} className="h-24 rounded shadow" />
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {[0, 1, 2].map((idx) => (
-                <input
-                  key={idx}
-                  type="text"
-                  placeholder={`Image URL ${idx + 1}`}
-                  value={imageUrls[idx]}
-                  onChange={(e) => {
-                    const newUrls = [...imageUrls];
-                    newUrls[idx] = e.target.value;
-                    setImageUrls(newUrls);
-                  }}
-                  className="w-full border px-3 py-2"
-                />
-              ))}
-              <div className="flex flex-wrap gap-3">
-                {imageUrls.filter(Boolean).map((url, i) => (
-                  <img key={i} src={url} className="h-24 rounded shadow" />
-                ))}
-              </div>
-            </div>
-          )}
+          <label className="block font-semibold text-gray-700">Upload Car Images</label>
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleFileChange}
+            className="w-full border px-3 py-2 rounded"
+          />
+          <p className="text-sm text-gray-500">Select multiple images at once (minimum 2).</p>
+          <div className="flex flex-wrap gap-3">
+            {imageFiles.map((file, i) => (
+              <img key={`${file.name}-${i}`} src={URL.createObjectURL(file)} className="h-24 rounded shadow" />
+            ))}
+          </div>
         </div>
 
         {uploading && <p className="text-sm text-gray-500">Uploading images...</p>}
 
         <button type="submit" className="bg-yellow text-white px-4 py-2 rounded shadow" disabled={uploading}>
-          {uploading ? 'Uploading...' : 'Add Car'}
+          {uploading ? 'Submitting...' : 'Add Car'}
         </button>
       </form>
     </div>

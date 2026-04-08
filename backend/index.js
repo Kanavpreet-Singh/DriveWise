@@ -7,8 +7,10 @@ const userRoutes=require('./routes/userRoutes');
 const carRoutes=require('./routes/carRoutes'); 
 const conversationRoutes=require('./routes/conversations'); 
 const messageRoutes=require('./routes/messages'); 
-app.use(cors());
-app.use(express.json());
+app.use(cors({
+    exposedHeaders: ['x-cache-source']
+}));
+app.use(express.json({ limit: '25mb' }));
 const port=5000;    
 
 app.listen(port,()=>{

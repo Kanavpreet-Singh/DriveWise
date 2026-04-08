@@ -17,6 +17,7 @@ import Home from "./pages/Home";
 import EditCar from "./pages/EditCar";
 import Messenger from "./pages/messenger/Messenger";
 import PredictPrice from './pages/PredictPrice';
+import UploadProgressPanel from './components/UploadProgressPanel';
 
 import { useEffect, useState } from 'react';
 import axios from "axios";
@@ -86,6 +87,7 @@ function App() {
       {!hideFooterOn.includes(location.pathname) && <Footer />}
 
       <ToastContainer position="top-right" autoClose={2000} />
+      <UploadProgressPanel />
     </>
   );
 }

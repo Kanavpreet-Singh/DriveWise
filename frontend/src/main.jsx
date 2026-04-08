@@ -4,14 +4,18 @@ import { BrowserRouter } from 'react-router-dom';
 import './index.css'
 import App from './App.jsx'
 import { AuthProvider } from './context/AuthContext.jsx';
+import { UploadTrackerProvider } from './context/UploadTrackerContext.jsx';
 
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
     <AuthProvider>
+    <UploadTrackerProvider>
     <App />
+    </UploadTrackerProvider>
     </AuthProvider>
     </BrowserRouter>
   </StrictMode>,
 )
+

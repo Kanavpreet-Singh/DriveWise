@@ -44,6 +44,41 @@
 ### 💻 Fully Responsive UI
 - Built with **Tailwind CSS** for a sleek and modern user experience across all devices.
 
+### 📦 Background Image Processing with Message Queues (BullMQ + Redis)
+
+I didn't want users staring at a loading spinner while 6–10 high-res car images upload to Cloudinary. So I offloaded the entire image upload pipeline to a **background worker** using **BullMQ** (backed by **Redis/Upstash**).
+
+**How it works:**
+- When a dealer adds/edits a car, the API immediately saves the car document (with `imageProcessingStatus: "queued"`) and enqueues a job onto a Redis-backed BullMQ queue. The HTTP response returns instantly — the user isn't blocked.
+- A **standalone worker process** (`worker/messagingQueueWorker.js`) picks up the job, connects to MongoDB independently, and uploads each image to Cloudinary **sequentially** — updating per-image status in the DB after every single upload.
+- The frontend **polls** `GET /car/image-status/:carId` every 2 seconds to get real-time per-image progress. A **Google Drive–style notification panel** (bottom-right corner) shows each file with a live status: `Queued → Uploading → ✓ Done / ✕ Failed`.
+
+**Resilience & Fallback:**
+- Before enqueuing, the backend checks `carImageQueue.getWorkersCount()`. If **no workers are online** (e.g., worker crashed or isn't deployed), it falls back to uploading images directly in the backend process using `setImmediate()` — still non-blocking, still with per-image status tracking.
+- BullMQ jobs are configured with `attempts: 2` and a fixed 5-second `backoff`, so transient Cloudinary failures get retried automatically.
+- The `CarImageUploadJob` MongoDB document stores a full `imageStatuses` array (one entry per image with `index`, `fileName`, `status`, `error`), which acts as an audit trail and powers the real-time UI.
+
+**Per-image granularity:**
+- Uploads are **not atomic** — I intentionally used sequential uploads with individual DB updates per image, so that the user sees each file tick off in real time. If 4 out of 6 images succeed and 2 fail, the car still gets the 4 successful images saved (partial success), and the UI clearly shows which files failed and why.
+
+**Why polling over WebSockets:**
+- The worker runs as a **separate process** (different from the Express server and the Socket.IO server). To push real-time events via WebSocket, the worker would need to connect to the Socket.IO server as a client, adding coupling and deployment complexity. Polling the existing REST endpoint every 2 seconds is simpler, stateless, and reliable enough for this use case — the status transitions are infrequent (one per image upload, ~2–5 seconds each).
+
+**Scalability & Queue Management:**
+- **Parallel Processing:** The worker is configured with a **concurrency of 5**, meaning it can process up to 5 different car upload jobs simultaneously. Within each job, images are processed one by one to ensure accurate state updates.
+- **Auto-Pruning:** To prevent Redis memory bloat, the queue is configured to automatically remove the last 100 successful and 200 failed jobs (`removeOnComplete`, `removeOnFail`).
+- **Render Deployment (Free Tier):** Includes a minimal HTTP server (`http.createServer`) to satisfy Render's health checks when deployed as a **Web Service**. This prevents the worker process from being shut down in a free account environment.
+- **Safe Redis Interaction:** All Redis operations use the `ioredis` client with appropriate retry logic and connection management.
+
+### ⚡ Redis Caching (Catalogue Performance)
+
+Car listings are read-heavy, so I added a **Redis cache layer** (Upstash) using a **cache-aside (lazy-loading)** pattern to avoid hitting MongoDB on every request.
+
+- **List queries** (`/car/allcars`) are cached with a composite key built from sorted filter params — e.g., `cars:list:{"brand":"Toyota","fuelType":"Diesel"}`. This means the same filter combination always hits the same cache key, regardless of query param order.
+- **Detail queries** (`/car/:id`) are cached individually under `cars:detail:<carId>`.
+- On any **write operation** (add, edit, delete, image upload completion), all list caches are invalidated using `SCAN` + `DEL` on the `cars:list:*` prefix, and the specific detail cache is deleted. This ensures users never see stale data after a mutation.
+- TTL is configurable via `REDIS_CAR_CACHE_TTL` env var. Setting it to `0` keeps entries alive until explicit invalidation — useful when write frequency is low and I want maximum cache hit rate.
+
 ---
 
 ## 🛠️ Tech Stack
@@ -53,6 +88,7 @@
 | **Frontend** | React, Tailwind CSS, Vite                                          |
 | **Backend**  | Node.js, Express.js                                                |
 | **Database** | MongoDB with Mongoose                                              |
+| **Queues**   | BullMQ, Redis (Upstash), standalone worker process                 |
 | **Auth**     | JWT, Brevo API (for OTP verification), bcrypt                      |
 | **Real-Time**| Socket.IO                                                          |
 | **ML**       | Custom Python model integrated through API                         |

@@ -12,3 +12,6 @@ frontend/build/
 # React (frontend)
 socket/node_modules/
 socket/.env
+
+worker/node_modules/
+worker/.env

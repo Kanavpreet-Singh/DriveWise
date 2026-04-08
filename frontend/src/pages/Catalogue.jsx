@@ -28,7 +28,24 @@ const Catalogue = () => {
   const [filtersApplied, setFiltersApplied] = useState(false);
   const [showNearbyHeading, setShowNearbyHeading] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [listingsLoading, setListingsLoading] = useState(false);
+  const [listingSource, setListingSource] = useState('UNKNOWN');
   const backend_url = import.meta.env.VITE_BACKEND_URL;
+
+  const updateListingSourceFromHeaders = (headers) => {
+    const source = headers?.['x-cache-source'];
+    if (source === 'REDIS' || source === 'DB') {
+      setListingSource(source);
+      return;
+    }
+    setListingSource('UNKNOWN');
+  };
+
+  const fetchAllCars = async () => {
+    const res = await axios.get(`${backend_url}/car/allcars`);
+    updateListingSourceFromHeaders(res.headers);
+    return res.data.cars;
+  };
 
   const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
     const deg2rad = (deg) => deg * (Math.PI / 180);
@@ -46,28 +63,38 @@ const Catalogue = () => {
   };
 
   const handleShowNearby = async () => {
+    setListingsLoading(true);
     try {
       navigator.geolocation.getCurrentPosition(async (position) => {
-        const { latitude, longitude } = position.coords;
-        const res = await axios.get(`${backend_url}/car/allcars`);
-        const filtered = res.data.cars.filter((car) => {
-          const [carLng, carLat] = car.location?.coordinates || [];
-          const dist = getDistanceFromLatLonInKm(latitude, longitude, carLat, carLng);
-          return dist <= 50;
-        });
-        setCars(filtered);
-        setFiltersApplied(true);
-        setShowNearbyHeading(true);
+        try {
+          const { latitude, longitude } = position.coords;
+          const allCars = await fetchAllCars();
+          const filtered = allCars.filter((car) => {
+            const [carLng, carLat] = car.location?.coordinates || [];
+            const dist = getDistanceFromLatLonInKm(latitude, longitude, carLat, carLng);
+            return dist <= 50;
+          });
+          setCars(filtered);
+          setFiltersApplied(true);
+          setShowNearbyHeading(true);
+        } catch (err) {
+          console.error('Error fetching nearby cars:', err);
+        } finally {
+          setListingsLoading(false);
+        }
+      }, () => {
+        setListingsLoading(false);
       });
     } catch (err) {
       console.error('Error fetching nearby cars:', err);
+      setListingsLoading(false);
     }
   };
 
   const fetchCars = async () => {
+  setListingsLoading(true);
   try {
-    const res = await axios.get(`${backend_url}/car/allcars`);
-    let allCars = res.data.cars;
+    let allCars = await fetchAllCars();
 
     const min = parseFloat(searchParams.get('min'));
 const max = parseFloat(searchParams.get('max'));
@@ -85,6 +112,8 @@ if (!isNaN(min) && !isNaN(max)) {
     setCars(allCars);
   } catch (err) {
     console.error('Error fetching cars:', err);
+  } finally {
+    setListingsLoading(false);
   }
 };
 
@@ -160,9 +189,10 @@ setCars(Array.isArray(data) ? data : []);
 
 
   const handleApplyFilters = async () => {
+    setListingsLoading(true);
     try {
-      const res = await axios.get(`${backend_url}/car/allcars`);
-      const filtered = res.data.cars.filter((car) => {
+      const allCars = await fetchAllCars();
+      const filtered = allCars.filter((car) => {
         return (
           (filters.brand ? car.brand === filters.brand : true) &&
           (filters.fuelType ? car.fuelType === filters.fuelType : true) &&
@@ -175,6 +205,8 @@ setCars(Array.isArray(data) ? data : []);
       setFiltersApplied(true);
     } catch (err) {
       console.error('Error filtering cars:', err);
+    } finally {
+      setListingsLoading(false);
     }
   };
 
@@ -202,6 +234,30 @@ setCars(Array.isArray(data) ? data : []);
 
   return (
     <div className="px-6 py-4">
+      <div className="mb-6 rounded-2xl border border-[#FCA311]/20 bg-gradient-to-r from-[#14213D] to-[#1f365f] p-4 text-white shadow-md">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-white/70">Listing Data Source</p>
+            <p className="text-lg font-semibold">
+              {listingsLoading ? 'Fetching listings...' : `Latest response from ${listingSource}`}
+            </p>
+          </div>
+          <span
+            className={`rounded-full px-3 py-1 text-xs font-bold ${
+              listingsLoading
+                ? 'bg-white/20 text-white'
+                : listingSource === 'REDIS'
+                ? 'bg-emerald-300 text-emerald-900'
+                : listingSource === 'DB'
+                ? 'bg-amber-300 text-amber-900'
+                : 'bg-slate-300 text-slate-900'
+            }`}
+          >
+            {listingsLoading ? 'LOADING' : listingSource}
+          </span>
+        </div>
+      </div>
+
       {user?.role === 'dealer' && (
         <div className="mb-6">
           <button
@@ -514,7 +570,18 @@ setCars(Array.isArray(data) ? data : []);
 
 
 
-      {cars.length === 0 ? (
+      {listingsLoading ? (
+        <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, index) => (
+            <div key={index} className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+              <div className="h-40 w-full animate-pulse rounded-xl bg-gray-200"></div>
+              <div className="mt-4 h-4 w-3/4 animate-pulse rounded bg-gray-200"></div>
+              <div className="mt-2 h-4 w-1/2 animate-pulse rounded bg-gray-200"></div>
+              <div className="mt-6 h-10 w-full animate-pulse rounded-xl bg-gray-200"></div>
+            </div>
+          ))}
+        </div>
+      ) : cars.length === 0 ? (
         <div className="text-center text-gray-500 text-lg py-12">
           No cars found for the selected filters.
         </div>

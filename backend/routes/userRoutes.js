@@ -145,10 +145,11 @@ router.post("/signup-verify", async (req, res) => {
 
     otpStore.delete(email);
 
+    const isProduction = process.env.NODE_ENV === 'production';
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'Strict',
+      secure: isProduction,
+      sameSite: isProduction ? 'None' : 'Lax',
       maxAge: 12 * 60 * 60 * 1000 // 12 hours
     });
 
@@ -212,10 +213,11 @@ router.post('/signin',async(req,res)=>{
       { expiresIn: "12h" }
     );
 
+    const isProduction = process.env.NODE_ENV === 'production';
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'Strict',
+      secure: isProduction,
+      sameSite: isProduction ? 'None' : 'Lax',
       maxAge: 12 * 60 * 60 * 1000 // 12 hours
     });
 
@@ -479,10 +481,11 @@ router.get('/me', userAuth, async (req, res) => {
 
 // 2. Clear Cookie (Logout)
 router.post('/logout', (req, res) => {
+  const isProduction = process.env.NODE_ENV === 'production';
   res.clearCookie('token', {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'Strict'
+    secure: isProduction,
+    sameSite: isProduction ? 'None' : 'Lax'
   });
   res.status(200).json({ message: "Logged out successfully" });
 });

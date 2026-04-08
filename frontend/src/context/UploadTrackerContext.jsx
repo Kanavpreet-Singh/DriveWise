@@ -68,14 +68,10 @@ export const UploadTrackerProvider = ({ children }) => {
     }
 
     const poll = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) return;
-
       for (const job of activeJobs) {
         try {
           const res = await axios.get(
-            `${backendUrl}/car/image-status/${job.carId}`,
-            { headers: { token } }
+            `${backendUrl}/car/image-status/${job.carId}`
           );
 
           const { status, error, imageCount, imageStatuses } = res.data;
@@ -115,6 +111,19 @@ export const UploadTrackerProvider = ({ children }) => {
             dismissTimersRef.current[job.id] = setTimeout(() => {
               dismissJob(job.id);
             }, AUTO_DISMISS_MS);
+
+            // If this was a completion and it's the last active job, trigger a page refresh
+            if (status === "completed") {
+              const remainingActive = uploads.filter(
+                (u) => u.id !== job.id && (u.status === "processing" || u.status === "queued")
+              );
+              if (remainingActive.length === 0) {
+                console.log("All image processing complete. Refreshing page in 3s...");
+                setTimeout(() => {
+                  window.location.reload();
+                }, 3000);
+              }
+            }
           }
         } catch {
           // network glitch — silently retry on next poll

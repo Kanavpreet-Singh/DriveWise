@@ -1,87 +1,72 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { jwtDecode } from 'jwt-decode';
+import axios from 'axios';
 
+const backend_url = import.meta.env.VITE_BACKEND_URL;
+axios.defaults.withCredentials = true;
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
+  // Sync user state with the backend on mount
   useEffect(() => {
-    const validateToken = (token) => {
+    localStorage.removeItem("token");
+    const checkAuth = async () => {
       try {
-        const decoded = jwtDecode(token);
-        if (decoded.exp * 1000 < Date.now()) {
-          console.warn("Token expired");
-          localStorage.removeItem("token");
-          return null;
-        }
-        return decoded;
-      } catch (err) {
-        console.error("Invalid token");
-        localStorage.removeItem("token");
-        return null;
-      }
-    };
-
-    const token = localStorage.getItem("token");
-    if (token) {
-      const decoded = validateToken(token);
-      if (decoded) {
-        setIsLoggedIn(true);
-        setUser(decoded);
-      } else {
-        setIsLoggedIn(false);
-        setUser(null);
-      }
-    }
-
-    const syncAuth = () => {
-      const currentToken = localStorage.getItem("token");
-      if (currentToken) {
-        const decoded = validateToken(currentToken);
-        if (decoded) {
+        const response = await axios.get(`${backend_url}/user/me`);
+        if (response.data.user) {
           setIsLoggedIn(true);
-          setUser(decoded);
-        } else {
-          setIsLoggedIn(false);
-          setUser(null);
+          // Format user data to match what components expect (id -> _id consistency)
+          const userData = response.data.user;
+          setUser({
+            userId: userData._id,
+            email: userData.email,
+            username: userData.username,
+            role: userData.role,
+            profilePic: userData.profilePic
+          });
         }
-      } else {
+      } catch (err) {
+        console.log("No active session found");
         setIsLoggedIn(false);
         setUser(null);
+      } finally {
+        setLoading(false);
       }
     };
 
-    window.addEventListener("storage", syncAuth);
-    return () => window.removeEventListener("storage", syncAuth);
+    checkAuth();
   }, []);
 
-  const login = (token) => {
-    try {
-      const decoded = jwtDecode(token);
-      if (decoded.exp * 1000 < Date.now()) {
-        console.error("Attempted login with expired token");
-        return;
-      }
-      localStorage.setItem("token", token);
-      setIsLoggedIn(true);
-      setUser(decoded);
-    } catch {
-      console.error("Invalid token");
-    }
+  const login = (userData) => {
+    // Expecting userData from the backend response (excluding token)
+    setIsLoggedIn(true);
+    setUser({
+      userId: userData.id || userData._id,
+      email: userData.email,
+      username: userData.username,
+      role: userData.role,
+      profilePic: userData.profilePic
+    });
   };
 
-  const logout = () => {
-    localStorage.removeItem("token");
-    setIsLoggedIn(false);
-    setUser(null);
+  const logout = async () => {
+    try {
+      await axios.post(`${backend_url}/user/logout`);
+    } catch (err) {
+      console.error("Logout failed on server, clearing local state anyway");
+    } finally {
+      setIsLoggedIn(false);
+      setUser(null);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn, user, login, logout }}>
-      {children}
+    <AuthContext.Provider value={{ isLoggedIn, user, login, logout, loading }}>
+      {!loading && children}
     </AuthContext.Provider>
   );
 };

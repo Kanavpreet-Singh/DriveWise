@@ -22,7 +22,7 @@ const Signup = () => {
   });
 
   const [isRegistered, setIsRegistered] = useState(false);
-  const [tempToken, setTempToken] = useState('');
+  const [tempUser, setTempUser] = useState(null);
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -103,11 +103,8 @@ const Signup = () => {
         email: formData.email,
         otp
       });
-      
-      toast.success(response.data.message);
-      
-      if (response.data.token) {
-        setTempToken(response.data.token);
+      if (response.status === 201) {
+        setTempUser(response.data.user);
         setIsRegistered(true);
       } else {
         navigate('/signin', { state: { from: location.state?.from } });
@@ -138,7 +135,7 @@ const Signup = () => {
             <div className="flex flex-col gap-3">
               <button
                 onClick={() => {
-                  login(tempToken);
+                  login(tempUser);
                   const destination = location.state?.from || '/';
                   navigate(destination);
                 }}

@@ -79,10 +79,7 @@ useEffect(() => {
 
   const fetchComments = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/car/comment/${carId}`, {
-        headers: { token }
-      });
+      const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/car/comment/${carId}`);
       setComments(res.data.comments);
     } catch (err) {
       console.error('Failed to fetch comments:', err);
@@ -98,11 +95,9 @@ useEffect(() => {
 
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
       await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/car/comment/${carId}`,
-        { comment },
-        { headers: { token } }
+        { comment }
       );
       commentRef.current.value = '';
       toast.success('Comment submitted successfully!');
@@ -184,13 +179,10 @@ useEffect(() => {
     if (!confirmed) return;
 
     try {
-      const token = localStorage.getItem('token');
-
       // Step 1: Create order & reserve car
       const orderRes = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/payment/create-order/${carId}`,
-        {},
-        { headers: { token } }
+        {}
       );
 
       const { orderId, amount, currency, carName, key } = orderRes.data;
@@ -216,8 +208,7 @@ useEffect(() => {
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
-              },
-              { headers: { token } }
+              }
             );
             toast.success(verifyRes.data.message || "Payment successful!");
             fetchCar();
@@ -234,8 +225,7 @@ useEffect(() => {
               try {
                 await axios.post(
                   `${import.meta.env.VITE_BACKEND_URL}/payment/cancel-order/${carId}`,
-                  {},
-                  { headers: { token } }
+                  {}
                 );
               } catch (cancelErr) {
                 console.error("Failed to cancel reservation:", cancelErr);
@@ -259,8 +249,7 @@ useEffect(() => {
         try {
           await axios.post(
             `${import.meta.env.VITE_BACKEND_URL}/payment/cancel-order/${carId}`,
-            {},
-            { headers: { token } }
+            {}
           );
         } catch (cancelErr) {
           console.error("Failed to cancel reservation on failure:", cancelErr);

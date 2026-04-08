@@ -1,7 +1,7 @@
 const jwt=require('jsonwebtoken')
 require('dotenv').config();
  const userAuth=async(req,res,next)=>{
-    let token=req.headers.token
+    let token = req.cookies.token;
     if(!token){
         return res.json({message:"you are not signed in"})
     }

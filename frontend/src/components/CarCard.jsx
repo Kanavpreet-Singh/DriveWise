@@ -14,12 +14,9 @@ const CarCard = ({ name, brand, price, image, _id, listedby }) => {
 
   const fetchUserAndCheckLiked = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
+      if (!user) return;
 
-      const res = await axios.get(`${backend_url}/user/getuser`, {
-        headers: { token },
-      });
+      const res = await axios.get(`${backend_url}/user/getuser`);
 
       const updatedUser = res.data.user;
       setLiked(
@@ -36,18 +33,13 @@ const CarCard = ({ name, brand, price, image, _id, listedby }) => {
 
   const toggleLike = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
+      if (!user) return;
 
       if (liked) {
-        await axios.delete(`${backend_url}/car/unlike/${_id}`, {
-          headers: { token },
-        });
+        await axios.delete(`${backend_url}/car/unlike/${_id}`);
         toast.info('Removed from wishlist!');
       } else {
-        await axios.post(`${backend_url}/car/like/${_id}`, {}, {
-          headers: { token },
-        });
+        await axios.post(`${backend_url}/car/like/${_id}`, {});
         toast.success('Added to wishlist!');
       }
 
@@ -62,10 +54,7 @@ const CarCard = ({ name, brand, price, image, _id, listedby }) => {
     if (!confirmed) return;
 
     try {
-      const token = localStorage.getItem('token');
-      await axios.delete(`${backend_url}/car/${_id}`, {
-        headers: { token },
-      });
+      await axios.delete(`${backend_url}/car/${_id}`);
       toast.success('Car deleted successfully!');
       window.location.reload(); 
     } catch (error) {

@@ -34,10 +34,7 @@ const EditCar = () => {
   useEffect(() => {
     const fetchCar = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const res = await axios.get(`${backend_url}/car/${id}`, {
-          headers: { token },
-        });
+        const res = await axios.get(`${backend_url}/car/${id}`);
 
         if (res.data.car.listedby !== user?.userId) {
           toast.error('You are not authorized to edit this car.');
@@ -107,7 +104,6 @@ const EditCar = () => {
         newImageFiles.map((file) => readFileAsDataUrl(file))
       );
 
-      const token = localStorage.getItem('token');
       const res = await axios.post(
         `${backend_url}/car/${id}`,
         {
@@ -122,9 +118,6 @@ const EditCar = () => {
           keepImages: existingImages,
           newImagePayloads,
           newImageFileNames: newImageFiles.map((f) => f.name),
-        },
-        {
-          headers: { token },
         }
       );
 

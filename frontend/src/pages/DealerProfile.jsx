@@ -16,16 +16,10 @@ const DealerProfile = () => {
 
   try {
     setDeleting(true);
-    const token = localStorage.getItem("token");
 
-    const res = await axios.delete(`${backend_url}/user/`, {
-      headers: {
-        token: token  
-      }
-    });
+    const res = await axios.delete(`${backend_url}/user/`);
 
     toast.success(res.data.message || "Account deleted successfully.");
-    localStorage.removeItem("token");
     navigate("/signin");
   } catch (error) {
     console.error(error);
@@ -38,17 +32,7 @@ const DealerProfile = () => {
   useEffect(() => {
     const fetchDealerInfo = async () => {
       try {
-        const token = localStorage.getItem('token');
-
-        if (!token) {
-          toast.error("Please login to access this page.");
-          navigate('/signin');
-          return;
-        }
-
-        const res = await axios.get(`${backend_url}/user/dealer`, {
-          headers: { token }
-        });
+        const res = await axios.get(`${backend_url}/user/dealer`);
 
         setUser(res.data.dealer);
         setCars(res.data.cars);

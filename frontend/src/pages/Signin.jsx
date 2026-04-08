@@ -36,8 +36,7 @@ const Signin = () => {
         email, password
       });
       
-      
-      login(response.data.token);
+      login(response.data.user);
       
       toast.success('Login successful!');
       const destination = location.state?.from || '/';

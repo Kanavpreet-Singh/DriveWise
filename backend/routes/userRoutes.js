@@ -145,9 +145,15 @@ router.post("/signup-verify", async (req, res) => {
 
     otpStore.delete(email);
 
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Strict',
+      maxAge: 12 * 60 * 60 * 1000 // 12 hours
+    });
+
     res.status(201).json({ 
       message: "User registered successfully",
-      token,
       user: {
         id: savedUser._id,
         email: savedUser.email,
@@ -206,9 +212,15 @@ router.post('/signin',async(req,res)=>{
       { expiresIn: "12h" }
     );
 
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Strict',
+      maxAge: 12 * 60 * 60 * 1000 // 12 hours
+    });
+
     return res.status(200).json({
       message: "You are logged in",
-      token, 
       user: {
         id: user._id,
         email: user.email,
@@ -451,5 +463,28 @@ router.get('/dealer', userAuth, async (req, res) => {
   });
 });
 
+
+// 1. Get current user data (Verify Cookie)
+router.get('/me', userAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId).select("-password -__v");
+    if (!user || !user.isActive) {
+      return res.status(401).json({ message: "User not found or inactive" });
+    }
+    res.status(200).json({ user });
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// 2. Clear Cookie (Logout)
+router.post('/logout', (req, res) => {
+  res.clearCookie('token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'Strict'
+  });
+  res.status(200).json({ message: "Logged out successfully" });
+});
 
 module.exports = router;

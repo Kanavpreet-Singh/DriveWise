@@ -101,7 +101,6 @@ const AddCar = () => {
     setUploading(true);
     const imagePayloads = await Promise.all(imageFiles.map((file) => readFileAsDataUrl(file)));
 
-    const token = localStorage.getItem('token');
     const res = await axios.post(`${backend_url}/car/add`,
       {
         ...formData,
@@ -111,9 +110,6 @@ const AddCar = () => {
           type: 'Point',
           coordinates: coords
         }
-      },
-      {
-        headers: { token }
       });
 
     toast.success('Listing saved. Image processing started in background.');

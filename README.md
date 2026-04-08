@@ -36,11 +36,19 @@
 - Users input their **ideal monthly EMI** and **available downpayment** using interactive sliders.
 - The system instantly calculates their **Total Purchasing Power** (based on standard interest/tenure) and filters the catalogue to show cars that match their financial comfort zone.
 
-### 🔐 Secure Authentication
-- **Implementation:** Uses **JWT (JSON Web Tokens)** for stateless session management. Passwords are encrypted using **bcrypt** (salt rounds: 5) before storage.
-- **OTP Verification:** Registration and password resets are secured via email-based OTPs, sent using the **Brevo transactional API**.
-- **Session Security:** Tokens are issued with a **12-hour expiration** (`expiresIn: "12h"`) and are proactively validated by the frontend `AuthContext` to ensure automatic logout after 12 hours.
-- Verified protected routes via a custom **Express middleware** that handles token verification and 401 error responses for expired sessions.
+### 🔐 Secure Authentication ("Secure Vault" Model)
+
+DriveWise uses a hardened **HTTP-Only Cookie** authentication system, moving away from vulnerable `localStorage` storage to an enterprise-grade security model.
+
+- **Storage Strategy:** JWTs are delivered via the `Set-Cookie` header with the `httpOnly: true` flag. This makes the session token **invisible to JavaScript**, providing a robust defense against **XSS (Cross-Site Scripting)** attacks.
+- **CSRF & Transport Security:** 
+    - Uses `SameSite: Strict` to mitigate Cross-Site Request Forgery.
+    - Uses the `secure: true` flag in production to ensure tokens are only ever transmitted over HTTPS.
+- **Stateless Identity Sync:** Since the frontend cannot "read" the cookie, I've implemented a custom **"Silent Re-auth"** flow. On app mount, the frontend calls the `/user/me` endpoint to synchronize the logged-in user's state without exposing the underlying token.
+- **Enhanced Verification:** 
+    - **bcrypt** (salt rounds: 10) for high-strength password hashing.
+    - **OTP verification** via Brevo API for registration and password resets.
+    - **12-hour expiration** with automatic browser-side cleanup via the global Axios `withCredentials` configuration.
 
 ### 💻 Fully Responsive UI
 - Built with **Tailwind CSS** for a sleek and modern user experience across all devices.

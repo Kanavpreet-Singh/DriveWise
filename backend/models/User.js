@@ -37,6 +37,10 @@ const userSchema = new Schema({
   profilePic:{
     type:String,
     required:false
+  },
+  isActive: {
+    type: Boolean,
+    default: true
   }
 
 });

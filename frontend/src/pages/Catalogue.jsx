@@ -119,6 +119,7 @@ if (!isNaN(min) && !isNaN(max)) {
 
 
   useEffect(() => {
+    window.scrollTo(0, 0);
     fetchCars();
   }, []);
 

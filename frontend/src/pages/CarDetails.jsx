@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 const cityList = [
   { name: 'Delhi', coordinates: [77.1025, 28.7041] },
   { name: 'Mumbai', coordinates: [72.8777, 19.076] },
@@ -37,6 +37,7 @@ const CarDetails = () => {
   const { user } = useAuth();
   const commentRef = useRef();
   const navigate = useNavigate();
+  const location = useLocation();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
@@ -174,7 +175,8 @@ useEffect(() => {
 
   const handleBuyCar = async () => {
     if (!user) {
-      toast.warn("Please sign in to buy a car.");
+      toast.info("Please sign in to buy a car.");
+      navigate('/signin', { state: { from: location.pathname } });
       return;
     }
 
@@ -356,7 +358,7 @@ useEffect(() => {
               Chat with dealer
             </button>
 
-            {user?.role === 'customer' && (
+            {(!user || user?.role === 'customer') && (
               isSold ? (
                 <span className="bg-red-100 text-red-700 font-bold py-3 px-6 rounded-lg border border-red-300 cursor-not-allowed">
                   Sold Out

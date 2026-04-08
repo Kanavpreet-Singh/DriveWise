@@ -31,10 +31,10 @@
   - Mileage
 - Useful for both **sellers** (to estimate selling price) and **buyers** (to verify fair pricing).
 
-### 💰 EMI Calculator
-- Customers can use the **EMI predictor** to:
-  - Estimate monthly installments.
-  - Filter and find cars that fit within their budget.
+### 💰 Smart Affordability Tool (EMI Discovery)
+- Instead of a traditional manual calculator, DriveWise features a **Reverse-EMI Budget Discovery** system.
+- Users input their **ideal monthly EMI** and **available downpayment** using interactive sliders.
+- The system instantly calculates their **Total Purchasing Power** (based on standard interest/tenure) and filters the catalogue to show cars that match their financial comfort zone.
 
 ### 🔐 Secure Authentication
 - **Implementation:** Uses **JWT (JSON Web Tokens)** for stateless session management. Passwords are encrypted using **bcrypt** (salt rounds: 5) before storage.
@@ -70,6 +70,16 @@ I didn't want users staring at a loading spinner while 6–10 high-res car image
 - **Auto-Pruning:** To prevent Redis memory bloat, the queue is configured to automatically remove the last 100 successful and 200 failed jobs (`removeOnComplete`, `removeOnFail`).
 - **Render Deployment (Free Tier):** Includes a minimal HTTP server (`http.createServer`) to satisfy Render's health checks when deployed as a **Web Service**. This prevents the worker process from being shut down in a free account environment.
 - **Safe Redis Interaction:** All Redis operations use the `ioredis` client with appropriate retry logic and connection management.
+
+### 🛡️ Secure Transaction Gateway (Razorpay)
+
+To prevent the "Double Purchase" problem and ensure a seamless financial experience, I implemented a robust payment pipeline with a focus on **concurrency control** and **transactional integrity**.
+
+**Key Technical Pillars:**
+- **Atomic Car Reservations**: When a user clicks "Buy", the car's state is atomically flipped to `pending` (locked) for 10 minutes using a MongoDB `findOneAndUpdate` operation. This prevents other users from initiating a checkout for the same car simultaneously.
+- **ACID Compliance**: The final verification step (matching the Razorpay signature and marking the car as `sold`) is wrapped in a **MongoDB Session (Transaction)**. This ensures that the car is only marked as sold if the payment is valid, and the payment record is saved exactly once — an all-or-nothing guarantee.
+- **Token Booking Model**: Instead of charging the full car price (which exceeds standard gateway limits), the system facilitates a **₹10,000 Reservation Fee**. This acts as a dummy yet functional "intent to buy" that removes the car from the marketplace upon successful payment.
+- **Race Condition Resilience**: The frontend uses an internal `paymentProcessed` flag to distinguish between a deliberate modal close and an automatic close triggered by success. This prevents accidental reservation cancellations during the verification window.
 
 ### ⚡ Redis Caching (Catalogue Performance)
 

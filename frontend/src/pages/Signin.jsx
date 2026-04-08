@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import axios from "axios";
 import { toast } from 'react-toastify';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Link } from 'react-router-dom';
 
 const backend_url = import.meta.env.VITE_BACKEND_URL;
 
@@ -15,6 +14,7 @@ const Signin = () => {
   });
 
   const navigate = useNavigate();
+  const location = useLocation();
 
   const {login}=useAuth();
 
@@ -40,7 +40,8 @@ const Signin = () => {
       login(response.data.token);
       
       toast.success('Login successful!');
-      navigate('/');
+      const destination = location.state?.from || '/';
+      navigate(destination);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Login failed');
     } finally {
@@ -97,7 +98,11 @@ const Signin = () => {
         
         <p className="text-[#14213D] text-sm text-center mt-6">
           Don't have an account?{' '}
-          <Link to="/signup" className="text-[#FCA311] font-semibold hover:underline">
+          <Link 
+            to="/signup" 
+            state={{ from: location.state?.from }}
+            className="text-[#FCA311] font-semibold hover:underline"
+          >
             Sign up
           </Link>
         </p>

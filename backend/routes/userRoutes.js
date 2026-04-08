@@ -65,7 +65,7 @@ router.post("/signup-request", async (req, res) => {
 
   try {
     const existingUser = await User.findOne({ email });
-    if (existingUser) {
+    if (existingUser && existingUser.isActive) {
       return res.status(400).json({ message: "User already exists" });
     }
 
@@ -113,20 +113,47 @@ router.post("/signup-verify", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 5);
     const isInstituteEmail = email.endsWith("@pec.edu.in");
 
-    const newUser = new User({
-      username,
-      email,
-      password: hashedPassword,
-      isVerified: true,
-      role: isInstituteEmail ? "dealer" : "customer",
-      ...(profilePic ? { profilePic } : {})
-    });
+    // Check if we are reactivating an old account or creating a new one
+    let savedUser = await User.findOne({ email });
 
-    await newUser.save();
+    if (savedUser) {
+      // Reactivation
+      savedUser.username = username;
+      savedUser.password = hashedPassword;
+      savedUser.isVerified = true;
+      savedUser.isActive = true;
+      if (profilePic) savedUser.profilePic = profilePic;
+      await savedUser.save();
+    } else {
+      // New registration
+      savedUser = new User({
+        username,
+        email,
+        password: hashedPassword,
+        isVerified: true,
+        role: isInstituteEmail ? "dealer" : "customer",
+        ...(profilePic ? { profilePic } : {})
+      });
+      await savedUser.save();
+    }
+
+    const token = jwt.sign(
+      { userId: savedUser._id, email: savedUser.email, username: savedUser.username, role: savedUser.role, profilePic: savedUser.profilePic },
+      process.env.JWT_SECRET,
+      { expiresIn: "12h" }
+    );
 
     otpStore.delete(email);
 
-    res.status(201).json({ message: "User registered successfully" });
+    res.status(201).json({ 
+      message: "User registered successfully",
+      token,
+      user: {
+        id: savedUser._id,
+        email: savedUser.email,
+        username: savedUser.username
+      }
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Error saving user" });
@@ -162,6 +189,10 @@ router.post('/signin',async(req,res)=>{
 
     if (!user) {
       return res.status(400).json({ message: "Wrong email" });
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({ message: "Account is deactivated. Sign up with the same email to reactivate it." });
     }
 
     const passwordMatch = await bcrypt.compare(password, user.password);
@@ -342,23 +373,23 @@ router.delete("/", userAuth, async (req, res) => {
   try {
     const { userId } = req.user;
 
-    
-    await User.findByIdAndDelete(userId);
-
-    
-    await Car.deleteMany({ listedby: userId });
-
-    
-    const conversations = await Conversation.find({
-      members: userId
+    // 1. Mark User as Inactive (Soft Delete)
+    // We clear the profilePic and could optionally prefix the username
+    await User.findByIdAndUpdate(userId, { 
+      isActive: false, 
+      profilePic: null,
+      username: `Deleted User (${userId.toString().slice(-4)})`
     });
 
+    // 2. Delete ONLY unsold cars listed by this user
+    // We MUST keep sold cars so the buyers' history is preserved
+    await Car.deleteMany({ listedby: userId, sold: false });
+
+    // 3. Cleanup social data (Privacy)
+    const conversations = await Conversation.find({ members: userId });
     const conversationIds = conversations.map(conv => conv._id);
 
-    
     await Conversation.deleteMany({ _id: { $in: conversationIds } });
-
-    
     await Message.deleteMany({ conversationId: { $in: conversationIds } });
 
     res.status(200).json({ success: true, message: "User and related data deleted." });

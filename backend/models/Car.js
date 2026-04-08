@@ -61,6 +61,24 @@ const carSchema=new Schema({
     ref: 'User',
     default: null,
   },
+  paymentStatus: {
+    type: String,
+    enum: ['available', 'pending', 'sold'],
+    default: 'available',
+  },
+  reservedBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
+  },
+  reservedAt: {
+    type: Date,
+    default: null,
+  },
+  razorpayOrderId: {
+    type: String,
+    default: null,
+  },
   location: {
     type: {
       type: String,
@@ -78,4 +96,4 @@ const carSchema=new Schema({
 carSchema.index({ location: '2dsphere' });
 
 const Car=model('Car',carSchema);
-module.exports = Car;
+module.exports = Car;

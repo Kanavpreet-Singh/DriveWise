@@ -7,6 +7,8 @@ const userRoutes=require('./routes/userRoutes');
 const carRoutes=require('./routes/carRoutes'); 
 const conversationRoutes=require('./routes/conversations'); 
 const messageRoutes=require('./routes/messages'); 
+const paymentRoutes=require('./routes/paymentRoutes');
+
 app.use(cors({
     exposedHeaders: ['x-cache-source']
 }));
@@ -28,3 +30,4 @@ app.use('/user',userRoutes);
 app.use('/car',carRoutes);
 app.use('/conversation',conversationRoutes);
 app.use('/message',messageRoutes);
+app.use('/payment',paymentRoutes);

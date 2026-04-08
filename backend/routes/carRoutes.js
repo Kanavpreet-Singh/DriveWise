@@ -836,41 +836,6 @@ router.delete('/:id', userAuth, async (req, res) => {
   }
 });
 
-router.post('/buy/:id', userAuth, async (req, res) => {
-  try {
-    const carId = req.params.id;
-    const userId = req.user.userId;
-
-    const car = await Car.findById(carId);
-    if (!car) {
-      return res.status(404).json({ message: 'Car not found' });
-    }
-
-    if (car.sold) {
-      return res.status(400).json({ message: 'This car has already been sold' });
-    }
-
-    if (car.listedby.toString() === userId) {
-      return res.status(400).json({ message: 'You cannot buy your own car' });
-    }
-
-    car.sold = true;
-    car.boughtBy = userId;
-    await car.save();
-
-    try {
-      await invalidateCarCaches(carId);
-    } catch (cacheInvalidationError) {
-      console.error("Redis invalidation error (/car/buy):", cacheInvalidationError.message);
-    }
-
-    res.status(200).json({ message: 'Car purchased successfully', car });
-  } catch (error) {
-    console.error('Buy error:', error);
-    res.status(500).json({ message: 'Something went wrong while purchasing' });
-  }
-});
-
 router.get('/bought/my', userAuth, async (req, res) => {
   try {
     const cars = await Car.find({ boughtBy: req.user.userId });

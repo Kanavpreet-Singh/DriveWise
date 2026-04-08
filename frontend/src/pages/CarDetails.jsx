@@ -178,25 +178,105 @@ useEffect(() => {
       return;
     }
 
-    const confirmed = window.confirm(`Are you sure you want to buy "${car.name}" for ${formatPrice(car.price)}?`);
+    const confirmed = window.confirm(`Are you sure you want to pay a booking amount of ₹10,000 to reserve "${car.name}"? You will be redirected to the payment gateway.`);
     if (!confirmed) return;
 
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/car/buy/${carId}`,
+
+      // Step 1: Create order & reserve car
+      const orderRes = await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/payment/create-order/${carId}`,
         {},
         { headers: { token } }
       );
-      toast.success(res.data.message || 'Car purchased successfully!');
-      fetchCar();
+
+      const { orderId, amount, currency, carName, key } = orderRes.data;
+
+      // Track if payment started to avoid race condition in ondismiss
+      let paymentProcessed = false;
+
+      // Step 2: Open Razorpay Checkout
+      const options = {
+        key,
+        amount,
+        currency,
+        name: "DriveCircle",
+        description: `Booking Amount for: ${carName}`,
+        order_id: orderId,
+        handler: async function (response) {
+          paymentProcessed = true;
+          // Step 3: Verify payment
+          try {
+            const verifyRes = await axios.post(
+              `${import.meta.env.VITE_BACKEND_URL}/payment/verify-payment`,
+              {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              },
+              { headers: { token } }
+            );
+            toast.success(verifyRes.data.message || "Payment successful!");
+            fetchCar();
+          } catch (verifyErr) {
+            toast.error(verifyErr.response?.data?.message || "Payment verification failed.");
+            fetchCar(); // Refresh status
+          }
+        },
+        modal: {
+          ondismiss: async function () {
+            // User closed the modal without paying — release the reservation
+            // ONLY if payment wasn't already processed/verified
+            if (!paymentProcessed) {
+              try {
+                await axios.post(
+                  `${import.meta.env.VITE_BACKEND_URL}/payment/cancel-order/${carId}`,
+                  {},
+                  { headers: { token } }
+                );
+              } catch (cancelErr) {
+                console.error("Failed to cancel reservation:", cancelErr);
+              }
+              toast.info("Payment cancelled.");
+              fetchCar();
+            }
+          },
+        },
+        prefill: {
+          email: user.email || "",
+        },
+        theme: {
+          color: "#FCA311",
+        },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on("payment.failed", async function (response) {
+        toast.error("Payment failed: " + (response.error?.description || "Unknown error"));
+        try {
+          await axios.post(
+            `${import.meta.env.VITE_BACKEND_URL}/payment/cancel-order/${carId}`,
+            {},
+            { headers: { token } }
+          );
+        } catch (cancelErr) {
+          console.error("Failed to cancel reservation on failure:", cancelErr);
+        }
+        fetchCar();
+      });
+      rzp.open();
     } catch (error) {
-      const msg = error.response?.data?.message || 'Failed to purchase car.';
+      const msg = error.response?.data?.message || "Failed to initiate payment.";
       toast.error(msg);
     }
   };
 
   if (!car) return <p>Loading car details...</p>;
+
+  // Determine buy button state
+  const isReservedByOther = car.paymentStatus === 'pending' && car.reservedBy !== user?.userId;
+  const isSold = car.sold || car.paymentStatus === 'sold';
 
   return (
     <div className="flex justify-center items-start min-h-screen bg-gray-50 py-10">
@@ -277,20 +357,29 @@ useEffect(() => {
             </button>
 
             {user?.role === 'customer' && (
-              car.sold ? (
+              isSold ? (
                 <span className="bg-red-100 text-red-700 font-bold py-3 px-6 rounded-lg border border-red-300 cursor-not-allowed">
                   Sold Out
+                </span>
+              ) : isReservedByOther ? (
+                <span className="bg-yellow-100 text-yellow-800 font-bold py-3 px-6 rounded-lg border border-yellow-300 cursor-not-allowed">
+                  ⏳ Checkout in progress...
                 </span>
               ) : (
                 <button
                   onClick={handleBuyCar}
-                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200"
+                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200 flex items-center gap-2"
                 >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" />
+                    <path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd" />
+                  </svg>
                   Buy This Car
                 </button>
               )
             )}
           </div>
+
 
           {user?.role === 'customer' && (
             <div className="space-y-2 mt-6 text-left">

@@ -14,7 +14,10 @@ const cloudName = (process.env.CLOUDINARY_CLOUD_NAME || "").trim();
 const uploadPreset = (process.env.CLOUDINARY_UPLOAD_PRESET || "").trim();
 const CAR_LIST_CACHE_PREFIX = "cars:list:";
 const CAR_DETAIL_CACHE_PREFIX = "cars:detail:";
-const buildImagePublicId = (carId, index) => `drivewise/cars/${carId}/image-${index + 1}`;
+const buildImagePublicId = (carId, index) => {
+  const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+  return `drivewise/cars/${carId}/img-${uniqueSuffix}-${index + 1}`;
+};
 
 if (!redisUrl) {
   throw new Error("Missing REDIS_URL in environment.");

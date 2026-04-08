@@ -57,7 +57,10 @@ const invalidateCarCaches = async (carId) => {
   }
 };
 
-const buildImagePublicId = (carId, index) => `drivewise/cars/${carId}/image-${index + 1}`;
+const buildImagePublicId = (carId, index) => {
+  const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+  return `drivewise/cars/${carId}/img-${uniqueSuffix}-${index + 1}`;
+};
 
 const uploadImagePayloadToCloudinary = async (fileInput, carId, index) => {
   const formData = new FormData();

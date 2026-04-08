@@ -7,6 +7,7 @@ const CustomerProfile = () => {
   const navigate = useNavigate();
   const backend_url = import.meta.env.VITE_BACKEND_URL;
   const [user, setUser] = useState(null);
+  const [boughtCars, setBoughtCars] = useState([]);
   const [deleting, setDeleting] = useState(false);
 
   const handleDeleteAccount = async () => {
@@ -57,7 +58,21 @@ const CustomerProfile = () => {
       }
     };
 
+    const fetchBoughtCars = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        const res = await axios.get(`${backend_url}/car/bought/my`, {
+          headers: { token }
+        });
+        setBoughtCars(res.data.cars || []);
+      } catch (error) {
+        console.error('Error fetching bought cars:', error);
+      }
+    };
+
     fetchUser();
+    fetchBoughtCars();
   }, []);
 
   if (!user) return <p className="text-center text-gray-600">Loading...</p>;
@@ -78,6 +93,42 @@ const CustomerProfile = () => {
           <p className="text-gray-700">{user.email}</p>
         </div>
       </div>
+
+      <h2 className="text-2xl mb-4 font-semibold text-[#14213D]">Your Purchased Cars</h2>
+
+      {boughtCars.length > 0 ? (
+        <div className="overflow-x-auto mb-10">
+          <table className="min-w-full bg-white border border-gray-300 rounded-lg shadow-sm">
+            <thead className="bg-gray-100 text-left">
+              <tr>
+                <th className="py-2 px-4">Car Name</th>
+                <th className="py-2 px-4">Brand</th>
+                <th className="py-2 px-4">Price</th>
+                <th className="py-2 px-4">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {boughtCars.map((car) => (
+                <tr key={car._id} className="border-t">
+                  <td className="py-2 px-4">{car.name}</td>
+                  <td className="py-2 px-4">{car.brand}</td>
+                  <td className="py-2 px-4">₹{(car.price / 100000).toFixed(2)} Lakh</td>
+                  <td className="py-2 px-4">
+                    <button
+                      onClick={() => navigate(`/catalogue/${car._id}`)}
+                      className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition"
+                    >
+                      View
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="text-gray-600 mb-10">You haven't purchased any cars yet.</p>
+      )}
 
       <h2 className="text-2xl mb-4 font-semibold text-[#14213D]">Your Wishlist</h2>
 

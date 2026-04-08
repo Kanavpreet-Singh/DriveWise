@@ -104,6 +104,21 @@ const DealerProfile = () => {
                 <p className="text-xs text-gray-600">
                   {car.fuelType} | {car.transmission} | {car.year} | {car.seats} seats
                 </p>
+
+                {car.sold ? (
+                  <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded">
+                    <span className="text-xs font-bold text-red-600">SOLD</span>
+                    {car.boughtBy && (
+                      <p className="text-xs text-gray-700 mt-1">
+                        Buyer: <span className="font-semibold">{car.boughtBy.username}</span> ({car.boughtBy.email})
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <span className="inline-block mt-2 text-xs font-bold text-green-600 bg-green-50 border border-green-200 rounded px-2 py-1">
+                    Available
+                  </span>
+                )}
               </div>
             </div>
           ))}

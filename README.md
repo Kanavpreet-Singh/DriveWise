@@ -37,9 +37,10 @@
   - Filter and find cars that fit within their budget.
 
 ### 🔐 Secure Authentication
-- **JWT-based authentication** for protected routes.
-- **OTP verification** via email using **Brevo transactional API** for secure account access.
-- Password-based login and registration with full validation.
+- **Implementation:** Uses **JWT (JSON Web Tokens)** for stateless session management. Passwords are encrypted using **bcrypt** (salt rounds: 5) before storage.
+- **OTP Verification:** Registration and password resets are secured via email-based OTPs, sent using the **Brevo transactional API**.
+- **Session Security:** Tokens are issued with a **12-hour expiration** (`expiresIn: "12h"`) and are proactively validated by the frontend `AuthContext` to ensure automatic logout after 12 hours.
+- Verified protected routes via a custom **Express middleware** that handles token verification and 401 error responses for expired sessions.
 
 ### 💻 Fully Responsive UI
 - Built with **Tailwind CSS** for a sleek and modern user experience across all devices.

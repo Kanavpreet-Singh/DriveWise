@@ -172,7 +172,7 @@ router.post('/signin',async(req,res)=>{
     const token = jwt.sign(
       { userId: user._id, email: user.email,username:user.username,role:user.role,profilePic: user.profilePic },
       process.env.JWT_SECRET,
-      { expiresIn: "7d" }
+      { expiresIn: "12h" }
     );
 
     return res.status(200).json({
@@ -411,7 +411,7 @@ router.get('/dealer', userAuth, async (req, res) => {
     return res.status(400).json({ message: 'dealer not found' });
   }
 
-  let cars = await Car.find({ listedby: dealer._id });
+  let cars = await Car.find({ listedby: dealer._id }).populate('boughtBy', 'username email profilePic');
 
   return res.status(200).json({
     message: 'dealer found',

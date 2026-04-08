@@ -52,6 +52,15 @@ const carSchema=new Schema({
     ref:'User',
     required:true
   } ,
+  sold: {
+    type: Boolean,
+    default: false,
+  },
+  boughtBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
+  },
   location: {
     type: {
       type: String,

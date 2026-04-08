@@ -9,26 +9,42 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token) {
+    const validateToken = (token) => {
       try {
         const decoded = jwtDecode(token);
-        setIsLoggedIn(true);
-        setUser(decoded); 
+        if (decoded.exp * 1000 < Date.now()) {
+          console.warn("Token expired");
+          localStorage.removeItem("token");
+          return null;
+        }
+        return decoded;
       } catch (err) {
         console.error("Invalid token");
         localStorage.removeItem("token");
+        return null;
+      }
+    };
+
+    const token = localStorage.getItem("token");
+    if (token) {
+      const decoded = validateToken(token);
+      if (decoded) {
+        setIsLoggedIn(true);
+        setUser(decoded);
+      } else {
+        setIsLoggedIn(false);
+        setUser(null);
       }
     }
 
     const syncAuth = () => {
-      const token = localStorage.getItem("token");
-      if (token) {
-        try {
-          const decoded = jwtDecode(token);
+      const currentToken = localStorage.getItem("token");
+      if (currentToken) {
+        const decoded = validateToken(currentToken);
+        if (decoded) {
           setIsLoggedIn(true);
           setUser(decoded);
-        } catch {
+        } else {
           setIsLoggedIn(false);
           setUser(null);
         }
@@ -43,9 +59,13 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = (token) => {
-    localStorage.setItem("token", token);
     try {
       const decoded = jwtDecode(token);
+      if (decoded.exp * 1000 < Date.now()) {
+        console.error("Attempted login with expired token");
+        return;
+      }
+      localStorage.setItem("token", token);
       setIsLoggedIn(true);
       setUser(decoded);
     } catch {

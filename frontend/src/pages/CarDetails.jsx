@@ -172,6 +172,29 @@ useEffect(() => {
   }
 };
 
+  const handleBuyCar = async () => {
+    if (!user) {
+      toast.warn("Please sign in to buy a car.");
+      return;
+    }
+
+    const confirmed = window.confirm(`Are you sure you want to buy "${car.name}" for ${formatPrice(car.price)}?`);
+    if (!confirmed) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/car/buy/${carId}`,
+        {},
+        { headers: { token } }
+      );
+      toast.success(res.data.message || 'Car purchased successfully!');
+      fetchCar();
+    } catch (error) {
+      const msg = error.response?.data?.message || 'Failed to purchase car.';
+      toast.error(msg);
+    }
+  };
 
   if (!car) return <p>Loading car details...</p>;
 
@@ -248,9 +271,26 @@ useEffect(() => {
           </div>
           </div>
 
-          <button onClick={handleChatWithDealer} className="bg-yellow hover:bg-blue text-white font-bold py-3 px-6 rounded-lg transition duration-200">
-            Chat with dealer
-          </button>
+          <div className="flex gap-4 justify-center flex-wrap">
+            <button onClick={handleChatWithDealer} className="bg-yellow hover:bg-blue text-white font-bold py-3 px-6 rounded-lg transition duration-200">
+              Chat with dealer
+            </button>
+
+            {user?.role === 'customer' && (
+              car.sold ? (
+                <span className="bg-red-100 text-red-700 font-bold py-3 px-6 rounded-lg border border-red-300 cursor-not-allowed">
+                  Sold Out
+                </span>
+              ) : (
+                <button
+                  onClick={handleBuyCar}
+                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200"
+                >
+                  Buy This Car
+                </button>
+              )
+            )}
+          </div>
 
           {user?.role === 'customer' && (
             <div className="space-y-2 mt-6 text-left">

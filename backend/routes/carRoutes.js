@@ -1,9 +1,9 @@
 const express = require("express");
-const  Car  = require("../models/Car");
-const  Comment  = require("../models/Comment");
+const Car = require("../models/Car");
+const Comment = require("../models/Comment");
 const { GoogleGenAI } = require("@google/genai");
 const userAuth = require("../middleware/authentication/user");
-const  User  = require("../models/User");
+const User = require("../models/User");
 const CarImageUploadJob = require("../models/CarImageUploadJob");
 const redis = require("../redisClient");
 const { carImageQueue } = require("../queues/carImageQueue");
@@ -239,7 +239,7 @@ const ai = new GoogleGenAI({
 
 router.get("/requestedcars", async (req, res) => {
   try {
-    const userQuery = req.query.q; 
+    const userQuery = req.query.q;
     if (!userQuery) {
       return res.status(400).json({ message: "Missing query parameter ?q=" });
     }
@@ -305,7 +305,7 @@ router.get("/requestedcars", async (req, res) => {
       return res.status(500).json({ message: "Invalid AI response format" });
     }
 
-   
+
 
     let query = {};
 
@@ -371,7 +371,7 @@ router.post('/add', userAuth, async (req, res) => {
     name,
     brand,
     price,
-    
+
     category,
     fuelType,
     transmission,
@@ -379,7 +379,7 @@ router.post('/add', userAuth, async (req, res) => {
     seats,
     imagePayloads,
     imageFileNames,
-    location 
+    location
   } = req.body;
 
   if (!name || !brand || !price || !category || !location) {
@@ -412,7 +412,7 @@ router.post('/add', userAuth, async (req, res) => {
       listedby: req.user.userId,
       location: {
         type: 'Point',
-        coordinates: location.coordinates  
+        coordinates: location.coordinates
       }
     });
 
@@ -580,7 +580,7 @@ router.post('/:id', userAuth, async (req, res) => {
       name,
       brand,
       price,
-      
+
       category,
       fuelType,
       transmission,
@@ -598,7 +598,7 @@ router.post('/:id', userAuth, async (req, res) => {
       return res.status(404).json({ message: 'Car not found' });
     }
 
-    
+
     if (car.listedby.toString() !== req.user.userId) {
       return res.status(403).json({ message: 'Unauthorized to edit this car' });
     }
@@ -768,19 +768,19 @@ router.delete('/unlike/:id', userAuth, async (req, res) => {
   res.status(200).json({ message: 'Unliked' });
 });
 
-router.post("/comment/:id",userAuth,async(req,res)=>{
-  const {comment}=req.body;
+router.post("/comment/:id", userAuth, async (req, res) => {
+  const { comment } = req.body;
 
-  const {userId}=req.user
+  const { userId } = req.user
 
-  const id=req.params.id;
+  const id = req.params.id;
 
-  
 
-  let r=new Comment({
-    car:id,
-    user:userId,
-    text:comment
+
+  let r = new Comment({
+    car: id,
+    user: userId,
+    text: comment
   });
 
   await r.save();
@@ -794,8 +794,8 @@ router.get("/comment/:id", async (req, res) => {
 
   try {
     const comments = await Comment.find({ car: id })
-      .populate('user', 'username email profilePic') 
-      .sort({ createdAt: -1 }); 
+      .populate('user', 'username email profilePic')
+      .sort({ createdAt: -1 });
 
     res.status(200).json({ comments });
   } catch (error) {
@@ -814,12 +814,12 @@ router.delete('/:id', userAuth, async (req, res) => {
       return res.status(404).json({ message: 'Car not found' });
     }
 
-    
+
     if (car.listedby.toString() !== req.user.userId) {
       return res.status(403).json({ message: 'Unauthorized to delete this listing' });
     }
 
-    
+
     await Car.findByIdAndDelete(id);
     await Comment.deleteMany({ car: id });
 
@@ -833,6 +833,51 @@ router.delete('/:id', userAuth, async (req, res) => {
   } catch (error) {
     console.error('Delete error:', error);
     res.status(500).json({ message: 'Something went wrong while deleting' });
+  }
+});
+
+router.post('/buy/:id', userAuth, async (req, res) => {
+  try {
+    const carId = req.params.id;
+    const userId = req.user.userId;
+
+    const car = await Car.findById(carId);
+    if (!car) {
+      return res.status(404).json({ message: 'Car not found' });
+    }
+
+    if (car.sold) {
+      return res.status(400).json({ message: 'This car has already been sold' });
+    }
+
+    if (car.listedby.toString() === userId) {
+      return res.status(400).json({ message: 'You cannot buy your own car' });
+    }
+
+    car.sold = true;
+    car.boughtBy = userId;
+    await car.save();
+
+    try {
+      await invalidateCarCaches(carId);
+    } catch (cacheInvalidationError) {
+      console.error("Redis invalidation error (/car/buy):", cacheInvalidationError.message);
+    }
+
+    res.status(200).json({ message: 'Car purchased successfully', car });
+  } catch (error) {
+    console.error('Buy error:', error);
+    res.status(500).json({ message: 'Something went wrong while purchasing' });
+  }
+});
+
+router.get('/bought/my', userAuth, async (req, res) => {
+  try {
+    const cars = await Car.find({ boughtBy: req.user.userId });
+    res.status(200).json({ cars });
+  } catch (error) {
+    console.error('Error fetching bought cars:', error);
+    res.status(500).json({ message: 'Failed to fetch purchased cars' });
   }
 });
 

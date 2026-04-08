@@ -5,14 +5,12 @@ require('dotenv').config();
     if(!token){
         return res.json({message:"you are not signed in"})
     }
-    let check = jwt.verify(token,process.env.JWT_SECRET)
-
-    if(check) {
+    try {
+        const check = jwt.verify(token, process.env.JWT_SECRET);
         req.user = { userId: check.userId };
-        next()
-    }
-    else {
-        return res.json({message:"you are not signed in"})
+        next();
+    } catch (err) {
+        return res.status(401).json({ message: "Session expired or invalid. Please sign in again." });
     }
 
 }

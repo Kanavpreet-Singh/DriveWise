@@ -15,13 +15,14 @@ const passwordResetRateLimitMap = new Map();
 const  Conversation  = require("../models/Conversation");
 const  Message  = require("../models/Message");
 const crypto = require("crypto");
+const { authLimiter, globalLimiter } = require("../middleware/rateLimiter");
 
 router.get('/health', (req, res) => {
   res.status(200).send("Backend is awake!");
 });
 
 
-router.post("/signup-request", async (req, res) => {
+router.post("/signup-request", authLimiter, async (req, res) => {
   const signupRequestSchema = z.object({
     username: z
       .string()
@@ -90,7 +91,7 @@ router.post("/signup-request", async (req, res) => {
 });
 
 
-router.post("/signup-verify", async (req, res) => {
+router.post("/signup-verify", authLimiter, async (req, res) => {
   const { email, otp } = req.body;
 
   const record = otpStore.get(email);
@@ -168,7 +169,7 @@ router.post("/signup-verify", async (req, res) => {
 });
 
 
-router.post('/signin',async(req,res)=>{
+router.post('/signin', authLimiter, async(req,res)=>{
 
   const signinSchema = z.object({
   email: z
@@ -237,7 +238,7 @@ router.post('/signin',async(req,res)=>{
 
 });
 
-router.post('/forgot-password-request', async (req, res) => {
+router.post('/forgot-password-request', authLimiter, async (req, res) => {
   const forgotPasswordSchema = z.object({
     email: z.string().email("Invalid email format").max(100, "Email is too long"),
   });
@@ -294,7 +295,7 @@ router.post('/forgot-password-request', async (req, res) => {
   }
 });
 
-router.post('/forgot-password-verify', async (req, res) => {
+router.post('/forgot-password-verify', authLimiter, async (req, res) => {
   const forgotPasswordVerifySchema = z.object({
     email: z.string().email("Invalid email format").max(100, "Email is too long"),
     otp: z.string().min(6, "OTP is required").max(6, "OTP must be 6 digits"),
@@ -332,7 +333,7 @@ router.post('/forgot-password-verify', async (req, res) => {
   });
 });
 
-router.post('/reset-password', async (req, res) => {
+router.post('/reset-password', authLimiter, async (req, res) => {
   const resetPasswordSchema = z.object({
     email: z.string().email("Invalid email format").max(100, "Email is too long"),
     resetToken: z.string().min(10, "Reset token is required"),
@@ -413,7 +414,7 @@ router.delete("/", userAuth, async (req, res) => {
   }
 });
 
-router.get('/getgeneraluser/:id',async(req,res)=>{
+router.get('/getgeneraluser/:id', globalLimiter, async(req,res)=>{
 
   
   
@@ -430,7 +431,7 @@ router.get('/getgeneraluser/:id',async(req,res)=>{
 });
 
 
-router.get('/getuser',userAuth,async(req,res)=>{
+router.get('/getuser', globalLimiter, userAuth,async(req,res)=>{
 
   const {userId}=req.user;
   
@@ -446,7 +447,7 @@ router.get('/getuser',userAuth,async(req,res)=>{
 
 });
 
-router.get('/dealer', userAuth, async (req, res) => {
+router.get('/dealer', globalLimiter, userAuth, async (req, res) => {
   const { userId } = req.user;
   
 
@@ -467,7 +468,7 @@ router.get('/dealer', userAuth, async (req, res) => {
 
 
 // 1. Get current user data (Verify Cookie)
-router.get('/me', userAuth, async (req, res) => {
+router.get('/me', globalLimiter, userAuth, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId).select("-password -__v");
     if (!user || !user.isActive) {

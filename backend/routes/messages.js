@@ -1,11 +1,11 @@
 const express = require("express");
 const router = express.Router();
 const  Message  = require("../models/Message");
-
+const { creationLimiter, globalLimiter } = require("../middleware/rateLimiter");
 
 //add
 
-router.post('/',async(req,res)=>{
+router.post('/', creationLimiter, async(req,res)=>{
 
     const message=new Message(req.body);
 
@@ -21,7 +21,7 @@ router.post('/',async(req,res)=>{
 
 });
 
-router.get('/:conversationId', async (req,res)=>{
+router.get('/:conversationId', globalLimiter, async (req,res)=>{
 
     try{
 

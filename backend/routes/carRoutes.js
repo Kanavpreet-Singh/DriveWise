@@ -7,6 +7,7 @@ const User = require("../models/User");
 const CarImageUploadJob = require("../models/CarImageUploadJob");
 const redis = require("../redisClient");
 const { carImageQueue } = require("../queues/carImageQueue");
+const { creationLimiter, globalLimiter } = require("../middleware/rateLimiter");
 const router = express.Router();
 
 require("dotenv").config();
@@ -195,7 +196,7 @@ const runFallbackUploadInBackground = ({ carId, payloadDocId, fallbackReason }) 
   });
 };
 
-router.get('/allcars', async (req, res) => {
+router.get('/allcars', globalLimiter, async (req, res) => {
   try {
     const filters = {};
     const allowedFields = ['brand', 'fuelType', 'transmission', 'seats', 'category'];
@@ -240,7 +241,7 @@ const ai = new GoogleGenAI({
 });
 
 
-router.get("/requestedcars", async (req, res) => {
+router.get("/requestedcars", globalLimiter, async (req, res) => {
   try {
     const userQuery = req.query.q;
     if (!userQuery) {
@@ -369,7 +370,7 @@ router.get("/requestedcars", async (req, res) => {
 
 
 
-router.post('/add', userAuth, async (req, res) => {
+router.post('/add', creationLimiter, userAuth, async (req, res) => {
   const {
     name,
     brand,
@@ -543,7 +544,7 @@ router.get('/image-status/:id', userAuth, async (req, res) => {
   }
 });
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', globalLimiter, async (req, res) => {
   try {
     const carId = req.params.id;
     const cacheKey = buildDetailCacheKey(carId);
@@ -577,7 +578,7 @@ router.get('/:id', async (req, res) => {
     res.status(500).json({ message: "Error fetching car" });
   }
 });
-router.post('/:id', userAuth, async (req, res) => {
+router.post('/:id', creationLimiter, userAuth, async (req, res) => {
   try {
     const {
       name,
@@ -737,7 +738,7 @@ router.post('/:id', userAuth, async (req, res) => {
     res.status(500).json({ message: 'Something went wrong while updating the car' });
   }
 });
-router.post('/like/:id', userAuth, async (req, res) => {
+router.post('/like/:id', creationLimiter, userAuth, async (req, res) => {
   try {
     const { userId } = req.user;
     const carId = req.params.id;
@@ -758,7 +759,7 @@ router.post('/like/:id', userAuth, async (req, res) => {
   }
 });
 
-router.delete('/unlike/:id', userAuth, async (req, res) => {
+router.delete('/unlike/:id', creationLimiter, userAuth, async (req, res) => {
   const { userId } = req.user;
   const carId = req.params.id;
 
@@ -771,7 +772,7 @@ router.delete('/unlike/:id', userAuth, async (req, res) => {
   res.status(200).json({ message: 'Unliked' });
 });
 
-router.post("/comment/:id", userAuth, async (req, res) => {
+router.post("/comment/:id", creationLimiter, userAuth, async (req, res) => {
   const { comment } = req.body;
 
   const { userId } = req.user
@@ -792,7 +793,7 @@ router.post("/comment/:id", userAuth, async (req, res) => {
 
 });
 
-router.get("/comment/:id", async (req, res) => {
+router.get("/comment/:id", globalLimiter, async (req, res) => {
   const id = req.params.id;
 
   try {
@@ -807,7 +808,7 @@ router.get("/comment/:id", async (req, res) => {
   }
 });
 
-router.delete('/:id', userAuth, async (req, res) => {
+router.delete('/:id', creationLimiter, userAuth, async (req, res) => {
   const id = req.params.id;
 
   try {
@@ -839,7 +840,7 @@ router.delete('/:id', userAuth, async (req, res) => {
   }
 });
 
-router.get('/bought/my', userAuth, async (req, res) => {
+router.get('/bought/my', globalLimiter, userAuth, async (req, res) => {
   try {
     const cars = await Car.find({ boughtBy: req.user.userId });
     res.status(200).json({ cars });

@@ -98,6 +98,17 @@ Car listings are read-heavy, so I added a **Redis cache layer** (Upstash) using 
 - On any **write operation** (add, edit, delete, image upload completion), all list caches are invalidated using `SCAN` + `DEL` on the `cars:list:*` prefix, and the specific detail cache is deleted. This ensures users never see stale data after a mutation.
 - TTL is configurable via `REDIS_CAR_CACHE_TTL` env var. Setting it to `0` keeps entries alive until explicit invalidation — useful when write frequency is low and I want maximum cache hit rate.
 
+### 🚦 API Rate Limiting (Redis-Backed)
+
+To protect the platform from brute-force attacks, spamming, and API abuse, a tiered rate-limiting system using `express-rate-limit` backed by Redis has been implemented.
+
+- **Centralized State in Redis:** Instead of storing request counts in server memory (which fails in multi-instance deployments), the system uses an Upstash Redis cluster. This guarantees accurate counting across multiple server instances.
+- **Risk-Based Tiering:** APIs are categorized into three distinct tiers:
+  - **High-Risk (Auth, OTP & Payments):** e.g., login, sending OTPs, payment initialization. Strictly limited (e.g., 10 requests / 15 mins) to prevent credential stuffing, SMS toll fraud, and payment spam.
+  - **Medium-Risk (Mutations):** e.g., creating/editing cars. Limited to prevent database spam while accommodating power dealers.
+  - **Low-Risk (Reads):** e.g., browsing the catalogue. Generous limits to prevent scraping while allowing smooth UI navigation without false positives.
+- **Granular Application:** Limits are applied accurately across application layers, overriding global limits for sensitive routes to ensure strong security.
+
 ---
 
 ## 🛠️ Tech Stack

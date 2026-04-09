@@ -6,6 +6,7 @@ const Car = require("../models/Car");
 const Payment = require("../models/Payment");
 const userAuth = require("../middleware/authentication/user");
 const redis = require("../redisClient");
+const { paymentLimiter } = require("../middleware/rateLimiter");
 
 require("dotenv").config();
 
@@ -46,7 +47,7 @@ const invalidateCarCaches = async (carId) => {
 };
 
 // ─── STEP 1: Create Razorpay Order & Reserve Car ───────────────────────
-router.post("/create-order/:id", userAuth, async (req, res) => {
+router.post("/create-order/:id", paymentLimiter, userAuth, async (req, res) => {
   try {
     const carId = req.params.id;
     const userId = req.user.userId;
@@ -162,7 +163,7 @@ router.post("/create-order/:id", userAuth, async (req, res) => {
 });
 
 // ─── STEP 2: Verify Payment & Mark Car as Sold (ACID Transaction) ─────
-router.post("/verify-payment", userAuth, async (req, res) => {
+router.post("/verify-payment", paymentLimiter, userAuth, async (req, res) => {
   const session = await mongoose.startSession();
 
   try {
@@ -245,7 +246,7 @@ router.post("/verify-payment", userAuth, async (req, res) => {
 });
 
 // ─── Cancel/Release reservation ───────────────────────────────────────
-router.post("/cancel-order/:id", userAuth, async (req, res) => {
+router.post("/cancel-order/:id", paymentLimiter, userAuth, async (req, res) => {
   try {
     const carId = req.params.id;
     const userId = req.user.userId;
@@ -285,7 +286,7 @@ router.post("/cancel-order/:id", userAuth, async (req, res) => {
 });
 
 // ─── Check car payment status (for UI) ────────────────────────────────
-router.get("/payment-status/:id", async (req, res) => {
+router.get("/payment-status/:id", paymentLimiter, async (req, res) => {
   try {
     const car = await Car.findById(req.params.id).select("paymentStatus reservedAt sold");
     if (!car) return res.status(404).json({ message: "Car not found" });

@@ -18,6 +18,10 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '25mb' }));
 
+const { simulateStress } = require('./middleware/loadShedder');
+app.get('/api/admin/simulate-load', simulateStress);
+
+
 const port=5000;    
 
 app.listen(port,()=>{

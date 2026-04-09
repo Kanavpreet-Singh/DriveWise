@@ -16,6 +16,7 @@ const  Conversation  = require("../models/Conversation");
 const  Message  = require("../models/Message");
 const crypto = require("crypto");
 const { authLimiter, globalLimiter } = require("../middleware/rateLimiter");
+const { shedNormalPriority, shedHighPriority } = require("../middleware/loadShedder");
 
 router.get('/health', (req, res) => {
   res.status(200).send("Backend is awake!");
@@ -384,7 +385,7 @@ router.post('/reset-password', authLimiter, async (req, res) => {
   }
 });
 
-router.delete("/", userAuth, async (req, res) => {
+router.delete("/", shedHighPriority, userAuth, async (req, res) => {
   try {
     const { userId } = req.user;
 
@@ -414,7 +415,7 @@ router.delete("/", userAuth, async (req, res) => {
   }
 });
 
-router.get('/getgeneraluser/:id', globalLimiter, async(req,res)=>{
+router.get('/getgeneraluser/:id', globalLimiter, shedNormalPriority, async(req,res)=>{
 
   
   
@@ -431,7 +432,7 @@ router.get('/getgeneraluser/:id', globalLimiter, async(req,res)=>{
 });
 
 
-router.get('/getuser', globalLimiter, userAuth,async(req,res)=>{
+router.get('/getuser', globalLimiter, shedNormalPriority, userAuth,async(req,res)=>{
 
   const {userId}=req.user;
   
@@ -447,7 +448,7 @@ router.get('/getuser', globalLimiter, userAuth,async(req,res)=>{
 
 });
 
-router.get('/dealer', globalLimiter, userAuth, async (req, res) => {
+router.get('/dealer', globalLimiter, shedNormalPriority, userAuth, async (req, res) => {
   const { userId } = req.user;
   
 

@@ -2,10 +2,11 @@ const express = require("express");
 const router = express.Router();
 const  Message  = require("../models/Message");
 const { creationLimiter, globalLimiter } = require("../middleware/rateLimiter");
+const { shedNormalPriority, shedHighPriority } = require("../middleware/loadShedder");
 
 //add
 
-router.post('/', creationLimiter, async(req,res)=>{
+router.post('/', creationLimiter, shedHighPriority, async(req,res)=>{
 
     const message=new Message(req.body);
 
@@ -21,7 +22,7 @@ router.post('/', creationLimiter, async(req,res)=>{
 
 });
 
-router.get('/:conversationId', globalLimiter, async (req,res)=>{
+router.get('/:conversationId', globalLimiter, shedNormalPriority, async (req,res)=>{
 
     try{
 

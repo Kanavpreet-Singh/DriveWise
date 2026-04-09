@@ -8,6 +8,7 @@ const CarImageUploadJob = require("../models/CarImageUploadJob");
 const redis = require("../redisClient");
 const { carImageQueue } = require("../queues/carImageQueue");
 const { creationLimiter, globalLimiter } = require("../middleware/rateLimiter");
+const { shedNormalPriority, shedHighPriority } = require("../middleware/loadShedder");
 const router = express.Router();
 
 require("dotenv").config();
@@ -196,7 +197,7 @@ const runFallbackUploadInBackground = ({ carId, payloadDocId, fallbackReason }) 
   });
 };
 
-router.get('/allcars', globalLimiter, async (req, res) => {
+router.get('/allcars', globalLimiter, shedNormalPriority, async (req, res) => {
   try {
     const filters = {};
     const allowedFields = ['brand', 'fuelType', 'transmission', 'seats', 'category'];
@@ -241,7 +242,7 @@ const ai = new GoogleGenAI({
 });
 
 
-router.get("/requestedcars", globalLimiter, async (req, res) => {
+router.get("/requestedcars", globalLimiter, shedNormalPriority, async (req, res) => {
   try {
     const userQuery = req.query.q;
     if (!userQuery) {
@@ -370,7 +371,7 @@ router.get("/requestedcars", globalLimiter, async (req, res) => {
 
 
 
-router.post('/add', creationLimiter, userAuth, async (req, res) => {
+router.post('/add', creationLimiter, shedHighPriority, userAuth, async (req, res) => {
   const {
     name,
     brand,
@@ -513,7 +514,7 @@ router.post('/add', creationLimiter, userAuth, async (req, res) => {
   }
 });
 
-router.get('/image-status/:id', userAuth, async (req, res) => {
+router.get('/image-status/:id', shedNormalPriority, userAuth, async (req, res) => {
   try {
     const car = await Car.findById(req.params.id).select(
       'listedby image imageProcessingStatus imageProcessingError imageJobId'
@@ -544,7 +545,7 @@ router.get('/image-status/:id', userAuth, async (req, res) => {
   }
 });
 
-router.get('/:id', globalLimiter, async (req, res) => {
+router.get('/:id', globalLimiter, shedNormalPriority, async (req, res) => {
   try {
     const carId = req.params.id;
     const cacheKey = buildDetailCacheKey(carId);
@@ -578,7 +579,7 @@ router.get('/:id', globalLimiter, async (req, res) => {
     res.status(500).json({ message: "Error fetching car" });
   }
 });
-router.post('/:id', creationLimiter, userAuth, async (req, res) => {
+router.post('/:id', creationLimiter, shedHighPriority, userAuth, async (req, res) => {
   try {
     const {
       name,
@@ -738,7 +739,7 @@ router.post('/:id', creationLimiter, userAuth, async (req, res) => {
     res.status(500).json({ message: 'Something went wrong while updating the car' });
   }
 });
-router.post('/like/:id', creationLimiter, userAuth, async (req, res) => {
+router.post('/like/:id', creationLimiter, shedHighPriority, userAuth, async (req, res) => {
   try {
     const { userId } = req.user;
     const carId = req.params.id;
@@ -759,7 +760,7 @@ router.post('/like/:id', creationLimiter, userAuth, async (req, res) => {
   }
 });
 
-router.delete('/unlike/:id', creationLimiter, userAuth, async (req, res) => {
+router.delete('/unlike/:id', creationLimiter, shedHighPriority, userAuth, async (req, res) => {
   const { userId } = req.user;
   const carId = req.params.id;
 
@@ -772,7 +773,7 @@ router.delete('/unlike/:id', creationLimiter, userAuth, async (req, res) => {
   res.status(200).json({ message: 'Unliked' });
 });
 
-router.post("/comment/:id", creationLimiter, userAuth, async (req, res) => {
+router.post("/comment/:id", creationLimiter, shedHighPriority, userAuth, async (req, res) => {
   const { comment } = req.body;
 
   const { userId } = req.user
@@ -793,7 +794,7 @@ router.post("/comment/:id", creationLimiter, userAuth, async (req, res) => {
 
 });
 
-router.get("/comment/:id", globalLimiter, async (req, res) => {
+router.get("/comment/:id", globalLimiter, shedNormalPriority, async (req, res) => {
   const id = req.params.id;
 
   try {

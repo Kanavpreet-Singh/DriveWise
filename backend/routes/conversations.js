@@ -4,9 +4,10 @@ const router = express.Router();
 
 const  Conversation  = require("../models/Conversation");
 const { creationLimiter, globalLimiter } = require("../middleware/rateLimiter");
+const { shedNormalPriority, shedHighPriority } = require("../middleware/loadShedder");
 
 //new conv
-router.post("/", creationLimiter, async (req,res)=>{
+router.post("/", creationLimiter, shedHighPriority, async (req,res)=>{
 
     const newConversation=new Conversation({
         members:[req.body.senderId, req.body.receiverId],
@@ -26,7 +27,7 @@ router.post("/", creationLimiter, async (req,res)=>{
 
 //get conv
 
-router.get("/:userId", globalLimiter, async (req,res)=>{
+router.get("/:userId", globalLimiter, shedNormalPriority, async (req,res)=>{
 
     try{
         const conversation = await Conversation.find({
@@ -46,7 +47,7 @@ router.get("/:userId", globalLimiter, async (req,res)=>{
 });
 
 // get or create conversation between two users
-router.get("/find/:firstUserId/:secondUserId", creationLimiter, async (req, res) => {
+router.get("/find/:firstUserId/:secondUserId", creationLimiter, shedNormalPriority, async (req, res) => {
 
     if (req.params.firstUserId === req.params.secondUserId) {
     return res.status(400).json({ message: "Cannot create conversation with yourself." });

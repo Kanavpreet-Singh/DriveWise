@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Logo from "../assets/logo.png"
+import axios from 'axios';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -16,7 +17,16 @@ const Navbar = () => {
     setIsProfileOpen(false);
     navigate('/');
     toast.success("You are logged out");
-    
+  };
+
+  const simulateLoad = async () => {
+    toast.info("Simulating server load for 3s...");
+    try {
+      await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/admin/simulate-load?ms=3000`);
+      toast.success("Simulation finished");
+    } catch(err) {
+      toast.error("Simulation error");
+    }
   };
 
   const handleShowProfile = () => {
@@ -61,6 +71,8 @@ const Navbar = () => {
         {isLoggedIn && (
           <a href='/messenger' className='hover:underline'>Messenger</a>
         )}
+        
+        <button onClick={simulateLoad} title="Simulate Load" className='hover:scale-110 hidden sm:block'>⚡</button>
         
 
 

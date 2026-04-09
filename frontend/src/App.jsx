@@ -22,6 +22,17 @@ import UploadProgressPanel from './components/UploadProgressPanel';
 import { useEffect, useState } from 'react';
 import axios from "axios";
 
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 503) {
+      if (error.response.data && error.response.data.errorType === 'server_overload') {
+        toast.error(error.response.data.message, { toastId: 'load-shedding-toast' });
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 function App() {
   const location = useLocation();
   const [serverAwake, setServerAwake] = useState(false);

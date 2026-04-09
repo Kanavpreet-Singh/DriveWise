@@ -109,6 +109,29 @@ To protect the platform from brute-force attacks, spamming, and API abuse, a tie
   - **Low-Risk (Reads):** e.g., browsing the catalogue. Generous limits to prevent scraping while allowing smooth UI navigation without false positives.
 - **Granular Application:** Limits are applied accurately across application layers, overriding global limits for sensitive routes to ensure strong security.
 
+### ⚖️ Load Shedding (Graceful Degradation)
+
+Because Node.js operates on a **single-threaded event loop**, a sudden spike in heavy traffic or intense computations can block the thread, causing the entire server to slow down or fail. To protect the server, a **Load Shedding** mechanism is implemented.
+
+By continuously measuring the server's **event loop lag**, the system detects when the server is over-stressed and automatically prioritizes traffic to prevent a total crash.
+
+**Key Advantages:**
+- **Graceful Degradation:** During heavy load, non-critical requests (e.g., viewing standard car listings) are temporarily rejected, while critical actions (e.g., payments processing or logins) continue smoothly.
+- **Improved Reliability:** Prevents total server crashes by shedding excess weight before the system runs out of memory or CPU limits.
+- **Consistent User Experience:** High-priority, essential features remain fully available even when the system is under extreme strain.
+
+#### 🧠 How it Works (Simple Breakdown)
+
+The server uses a smart "health check" to decide whether to accept or reject new requests during busy times:
+
+1.  **Measuring "Lag"**: Instead of just checking if the CPU is busy, the server measures how long it takes to respond to a simple internal timer. If the timer takes too long to "ding," the server knows it is starting to lag.
+2.  **Recent Health Focus**: The server only cares about how it's performing **right now**. It clears its memory every few seconds so that a spike from an hour ago doesn't affect your experience now.
+3.  **Smart Prioritization**:
+    *   **Low Priority**: Simple browsing (like viewing the car list) is the first to be restricted to save energy.
+    *   **High Priority**: Critical actions like creating a listing or deleting an account are protected longer.
+    *   **VIP Access**: Payments and Logins are **never** restricted by this system, ensuring you can always finish a purchase or get into your account.
+4.  **Graceful Errors**: Instead of the app just "freezing" or "spinning," the server sends a polite message (HTTP 503) telling the app to try again in a few seconds once things have calmed down.
+
 ---
 
 ## 🛠️ Tech Stack

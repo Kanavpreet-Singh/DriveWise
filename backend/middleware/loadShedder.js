@@ -7,16 +7,22 @@ histogram.enable();
 
 let currentLagMs = 0;
 
-// Update current lag every 500ms and reset histogram to keep it "fresh"
+// Update current lag every 2s and reset histogram to keep it "fresh".
+// A longer window smooths out transient spikes from JSON parsing of large
+// payloads (e.g. base64 images) that do NOT indicate real overload.
 setInterval(() => {
     // Using the 99th percentile (p99) is much more reactive than the mean
     // because it catches the "spikes" that block the loop.
     currentLagMs = Math.round(histogram.percentile(99) / 1_000_000);
     histogram.reset();
-}, 500);
+}, 2000);
 
-const LAG_THRESHOLD_NORMAL_MS = 50; // 50ms (p99) is a good sign of stress
-const LAG_THRESHOLD_HIGH_MS = 100;
+// NOTE: On Render free tier the event loop routinely spikes above 50ms
+// during JSON body parsing (large base64 payloads), GC pauses, and cold
+// starts.  Very low thresholds cause false-positive 503s even with a
+// single user.  These values are deliberately generous to avoid that.
+const LAG_THRESHOLD_NORMAL_MS = 500;
+const LAG_THRESHOLD_HIGH_MS = 2000;
 
 /**
  * Helper to get current lag in milliseconds for logging/debugging

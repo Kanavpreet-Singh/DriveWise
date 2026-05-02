@@ -18,6 +18,7 @@ import EditCar from "./pages/EditCar";
 import Messenger from "./pages/messenger/Messenger";
 import PredictPrice from './pages/PredictPrice';
 import UploadProgressPanel from './components/UploadProgressPanel';
+import { useAuth } from './context/AuthContext';
 
 import { useEffect, useState } from 'react';
 import axios from "axios";
@@ -35,17 +36,15 @@ axios.interceptors.response.use(
 );
 function App() {
   const location = useLocation();
+  const { loading: authLoading } = useAuth();
   const [serverAwake, setServerAwake] = useState(false);
 
   useEffect(() => {
     const wakeServer = async () => {
-      toast.info("Waking up server, please wait...");
       try {
         await axios.get(`${import.meta.env.VITE_BACKEND_URL}/user/health`);
         setServerAwake(true);
-        toast.dismiss(); 
       } catch (err) {
-        toast.error("Server is not responding. Please try again shortly.");
         console.error("Silent backend wake-up failed", err);
       }
     };
@@ -55,21 +54,49 @@ function App() {
 
   const hideFooterOn = ["/messenger"];
 
-  if (!serverAwake) {
+  // Show the wake-up / loading screen while backend is starting or auth is resolving
+  if (!serverAwake || authLoading) {
     return (
       <>
         <ToastContainer position="top-right" autoClose={2000} />
-        <div style={{ textAlign: 'center', marginTop: '20%' }}>
-         <div style={{ textAlign: 'center', marginTop: '20%' }}>
-        <h2>🚀 Starting up... Please wait</h2>
-        <p style={{ marginTop: '1rem', fontSize: '1rem' }}>
-          This happens because the backend server (hosted on Render free tier) goes to sleep after some inactivity.
-        </p>
-        <p style={{ marginTop: '0.5rem', fontSize: '1rem' }}>
-          It usually takes 10–15 seconds to wake up. Thanks for your patience!
-        </p>
-</div>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100vh',
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+          background: 'linear-gradient(135deg, #14213D 0%, #1a2d50 100%)',
+          color: '#FFFFFF',
+          padding: '2rem',
+          textAlign: 'center',
+        }}>
+          {/* Animated spinner */}
+          <div style={{
+            width: '48px',
+            height: '48px',
+            border: '4px solid rgba(252, 163, 17, 0.3)',
+            borderTop: '4px solid #FCA311',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            marginBottom: '1.5rem',
+          }} />
+          <h2 style={{ margin: '0 0 1rem 0', fontSize: '1.5rem', fontWeight: 600 }}>
+            🚀 Starting up... Please wait
+          </h2>
+          <p style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', opacity: 0.85, maxWidth: '420px' }}>
+            This happens because the backend server (hosted on Render free tier) goes to sleep after some inactivity.
+          </p>
+          <p style={{ margin: 0, fontSize: '1rem', opacity: 0.85, maxWidth: '420px' }}>
+            It usually takes 10–15 seconds to wake up. Thanks for your patience!
+          </p>
 
+          {/* Inline keyframes for the spinner */}
+          <style>{`
+            @keyframes spin {
+              to { transform: rotate(360deg); }
+            }
+          `}</style>
         </div>
       </>
     );
@@ -104,3 +131,4 @@ function App() {
 }
 
 export default App;
+

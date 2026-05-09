@@ -109,6 +109,31 @@ To protect the platform from brute-force attacks, spamming, and API abuse, a tie
   - **Low-Risk (Reads):** e.g., browsing the catalogue. Generous limits to prevent scraping while allowing smooth UI navigation without false positives.
 - **Granular Application:** Limits are applied accurately across application layers, overriding global limits for sensitive routes to ensure strong security.
 
+### 🌸 Bloom Filter (Username & Email Availability)
+
+To provide **instant feedback** during signup without hitting the database on every keystroke, a custom **Bloom Filter** backed by **Redis** is used for username and email availability checks.
+
+**How it works:**
+- A Bloom Filter is a **space-efficient probabilistic data structure** that can tell you with certainty if an element is **not** in a set, or if it **might** be in a set. This makes it perfect for quick "is this username taken?" checks — a definitive "available" answer is always correct, while a "might be taken" answer triggers a final database confirmation during the actual signup.
+- Two separate bit arrays are stored in Redis (`bf:usernames` and `bf:emails`), each using **1 million bits (~125KB)** — tiny compared to storing all usernames in memory.
+
+**Hashing Strategy (Double Hashing):**
+- Instead of maintaining 7 independent hash functions, the system uses a **double hashing** technique with two base hashes (`SHA-256` and `SHA-1`). The 7 bit positions are derived as `h1 + i * h2` for `i = 0..6`, which is mathematically proven to provide the same accuracy as 7 independent hash functions while being significantly simpler and faster.
+- All inputs are **normalized** (trimmed + lowercased) before hashing to ensure consistent lookups regardless of user input casing.
+
+**Initialization & Persistence:**
+- On server startup, the system checks if the bloom filter already exists in Redis. If it does, it skips the rebuild — making restarts instant. If not (first boot or after a Redis flush), it loads all active users from MongoDB and populates the filter.
+- A `forceRebuild` flag is available to clear and re-seed the filter from the database, useful after schema migrations or data corrections.
+- When a new user registers successfully, their username and email are added to the bloom filter in real-time, so the next availability check instantly reflects the new registration.
+
+**Performance:**
+- Uses **Redis pipelines** (`SETBIT`/`GETBIT`) to batch all 7 bit operations into a single round-trip, minimizing network overhead.
+- The entire availability check completes in **sub-millisecond** time on the Redis side, compared to a full MongoDB `findOne` query which would require index lookups and network round-trips.
+
+**Frontend Integration:**
+- The signup form fires an availability check `onBlur` (when the user tabs out of the username/email field), calling `GET /user/check-availability?type=username&value=...`.
+- Instant visual feedback is shown: green "Available" or yellow "Might be taken" — giving users a smooth, responsive experience without waiting for a full database query.
+
 ### ⚖️ Load Shedding (Graceful Degradation)
 
 Because Node.js operates on a **single-threaded event loop**, a sudden spike in heavy traffic or intense computations can block the thread, causing the entire server to slow down or fail. To protect the server, a **Load Shedding** mechanism is implemented.

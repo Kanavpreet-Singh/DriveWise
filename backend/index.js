@@ -9,6 +9,8 @@ const carRoutes=require('./routes/carRoutes');
 const conversationRoutes=require('./routes/conversations'); 
 const messageRoutes=require('./routes/messages'); 
 const paymentRoutes=require('./routes/paymentRoutes');
+const { initializeBF } = require('./utils/bloomFilter');
+const User = require('./models/User');
 
 app.use(cookieParser());
 app.use(cors({
@@ -28,8 +30,16 @@ app.listen(port,()=>{
     console.log(`Server is running on port ${port}`);
 });
 
-mongoose.connect(process.env.MONGO_URL).then(() => {
+mongoose.connect(process.env.MONGO_URL).then(async () => {
     console.log('Connected to MongoDB');
+    
+    // Initialize bloom filters for username and email availability checks
+    // forceRebuild=true ensures stale data (from pre-normalization bug) is cleared
+    try {
+        await initializeBF(User, true);
+    } catch (err) {
+        console.error('Failed to initialize bloom filters:', err);
+    }
 }).catch(err => {
     console.error('MongoDB connection error:', err);
 });

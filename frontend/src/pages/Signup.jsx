@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-const backend_url = import.meta.env.VITE_BACKEND_URL;
+const backend_url = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
 const Signup = () => {
   const [otp, setOtp] = useState('');
@@ -20,6 +20,9 @@ const Signup = () => {
     password: '',
     profilePic: ''
   });
+
+  const [usernameStatus, setUsernameStatus] = useState(null); // { available: bool, message: string }
+  const [emailStatus, setEmailStatus] = useState(null);
 
   const [isRegistered, setIsRegistered] = useState(false);
   const [tempUser, setTempUser] = useState(null);
@@ -49,6 +52,19 @@ const Signup = () => {
       ...prev,
       [name]: value
     }));
+  };
+
+  const checkAvailability = async (type, value, setStatus) => {
+    if (!value) return;
+    try {
+      const res = await axios.get(`${backend_url}/user/check-availability`, {
+        params: { type, value: value.trim().toLowerCase() }
+      });
+      setStatus({ available: res.data.available, message: res.data.message });
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Check failed';
+      setStatus({ available: null, message: msg });
+    }
   };
 
   const handleOtpChange = (e) => {
@@ -167,9 +183,13 @@ const Signup = () => {
                     name="username"
                     value={formData.username}
                     onChange={handleChange}
+                    onBlur={() => checkAvailability('username', formData.username, setUsernameStatus)}
                     className="w-full px-4 py-3 rounded border border-[#E5E5E5] focus:outline-none focus:ring-2 focus:ring-[#FCA311]"
                     required
                   />
+                  {usernameStatus && (
+                    <p className={`text-sm ${usernameStatus.available ? 'text-green-600' : 'text-yellow-600'}`}>{usernameStatus.message}</p>
+                  )}
                 </div>
                 
                 <div className="space-y-2">
@@ -180,9 +200,13 @@ const Signup = () => {
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
+                    onBlur={() => checkAvailability('email', formData.email, setEmailStatus)}
                     className="w-full px-4 py-3 rounded border border-[#E5E5E5] focus:outline-none focus:ring-2 focus:ring-[#FCA311]"
                     required
                   />
+                  {emailStatus && (
+                    <p className={`text-sm ${emailStatus.available ? 'text-green-600' : 'text-yellow-600'}`}>{emailStatus.message}</p>
+                  )}
                 </div>
                 
                 <div className="space-y-2">

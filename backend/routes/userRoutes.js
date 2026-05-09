@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User"); 
 const { z } = require('zod');
 const sendOTPEmail = require("../utils/sendOTPEmail");
+const { checkBF, addToBF } = require("../utils/bloomFilter");
 const otpStore = new Map();
 const passwordResetStore = new Map();
 const bcrypt=require("bcrypt");
@@ -20,6 +21,53 @@ const { shedNormalPriority, shedHighPriority } = require("../middleware/loadShed
 
 router.get('/health', (req, res) => {
   res.status(200).send("Backend is awake!");
+});
+
+router.get('/check-availability', globalLimiter, async (req, res) => {
+  try {
+    const { type, value } = req.query;
+
+    // Validate input
+    if (!type || !value) {
+      return res.status(400).json({ message: "Both 'type' and 'value' are required" });
+    }
+
+    if (!['username', 'email'].includes(type)) {
+      return res.status(400).json({ message: "Type must be 'username' or 'email'" });
+    }
+
+    // Trim and normalize value
+    const normalizedValue = value.trim().toLowerCase();
+
+    if (type === 'username') {
+      if (normalizedValue.length < 3 || normalizedValue.length > 15) {
+        return res.status(400).json({ message: "Username must be 3-15 characters" });
+      }
+    } else if (type === 'email') {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(normalizedValue)) {
+        return res.status(400).json({ message: "Invalid email format" });
+      }
+    }
+
+    // Check bloom filter
+    const available = await checkBF(normalizedValue, type);
+
+    if (available) {
+      return res.status(200).json({ 
+        available: true, 
+        message: `${type.charAt(0).toUpperCase() + type.slice(1)} available` 
+      });
+    } else {
+      return res.status(200).json({ 
+        available: false, 
+        message: `${type.charAt(0).toUpperCase() + type.slice(1)} might be taken, click register for final confirmation` 
+      });
+    }
+  } catch (err) {
+    console.error('Error checking availability:', err);
+    res.status(500).json({ message: "Error checking availability" });
+  }
 });
 
 
@@ -69,6 +117,11 @@ router.post("/signup-request", authLimiter, async (req, res) => {
     const existingUser = await User.findOne({ email });
     if (existingUser && existingUser.isActive) {
       return res.status(400).json({ message: "User already exists" });
+    }
+
+    const existingUsername = await User.findOne({ username });
+    if (existingUsername && existingUsername.isActive) {
+      return res.status(400).json({ message: "Username already taken" });
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -139,6 +192,15 @@ router.post("/signup-verify", authLimiter, async (req, res) => {
       await savedUser.save();
     }
 
+    // Add username and email to bloom filter for future availability checks
+    try {
+      await addToBF(username.toLowerCase(), 'username', true);
+      await addToBF(email.toLowerCase(), 'email', true);
+    } catch (bfErr) {
+      console.error('Warning: Failed to update bloom filter:', bfErr);
+      // Don't fail the signup if bloom filter update fails
+    }
+
     const token = jwt.sign(
       { userId: savedUser._id, email: savedUser.email, username: savedUser.username, role: savedUser.role, profilePic: savedUser.profilePic },
       process.env.JWT_SECRET,
@@ -165,6 +227,17 @@ router.post("/signup-verify", authLimiter, async (req, res) => {
     });
   } catch (err) {
     console.error(err);
+    
+    // Handle MongoDB duplicate key error (code 11000)
+    if (err.code === 11000) {
+      const field = Object.keys(err.keyPattern)[0];
+      if (field === 'username') {
+        return res.status(400).json({ message: "Username already taken" });
+      } else if (field === 'email') {
+        return res.status(400).json({ message: "Email already registered" });
+      }
+    }
+    
     res.status(500).json({ message: "Error saving user" });
   }
 });
